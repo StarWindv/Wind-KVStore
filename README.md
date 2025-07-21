@@ -3,7 +3,7 @@
 [中文](./README_CN.md)
 
 ![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Rust Version](https://img.shields.io/badge/rust-1.65%2B-orange)
+![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange)
 
 Wind-KVStore is a lightweight, efficient, and persistent key-value storage engine implemented in Rust. This project combines a high-performance storage engine with a user-friendly command-line interface, making it suitable for scenarios requiring local persistent storage.
 
