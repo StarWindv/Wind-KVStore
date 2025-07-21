@@ -1,5 +1,5 @@
 [package]
-name = "kvstore"
+name = "wind-kvstore"
 version = "0.0.1"
 edition = "2024"
 
