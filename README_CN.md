@@ -104,7 +104,7 @@ IDENTIFIER GET;
 
 ```toml
 [dependencies]
-wind-kvstore = { git = "https://github.com/yourusername/wind-kvstore" }
+wind-kvstore = { git = "https://github.com/starwindv/wind-kvstore" }
 ```
 
 ### lib用法示例
