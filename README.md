@@ -134,7 +134,8 @@ impl KVStore {
 ├── Cargo.toml          # Project configuration and dependency management
 ├── README.md           # Project documentation (English)
 ├── README_CN.md        # Project documentation (Chinese)
-└── src
+├── doc/                # Another project documentation(Chinese and English)
+└── src/
     ├── config.rs       # Server configuration loader
     ├── kvstore.rs      # Core KV storage engine implementation
     ├── server.rs       # Server main logic
