@@ -4,6 +4,8 @@ use crate::utils::{
     parse_put_command, parse_get_command,
     parse_delete_command, parse_identifier_get,
     parse_identifier_set, parse_compact,
+    server_info, get_client_ip, format_header,
+    get_session_from_header
 };
 use actix_web::{
     get, post,
@@ -12,106 +14,15 @@ use actix_web::{
     Responder, HttpRequest
 };
 use anyhow::{anyhow, Result};
-use chrono::Local;
 use dashmap::DashMap;
 use futures::executor::block_on;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use tokio::time;
 use uuid::Uuid;
-
-
-#[allow(dead_code)]
-fn format_print(
-    prefix: Option<&str>,
-    text: Option<String>,
-    color: Option<&str>,
-    sep: Option<&str>,
-    end: Option<&str>,
-) {
-    // 设置默认值
-    let prefix = prefix.unwrap_or("[NONE]");
-    let text = text.unwrap_or("EMPTY".parse().unwrap());
-    let color = color.unwrap_or("0");
-    let sep = sep.unwrap_or(" ");
-    let end = end.unwrap_or("\n");
-
-    // 处理颜色代码
-    let color_code = if color.starts_with('\\') {
-        color.to_string()
-    } else {
-        format!("\x1b[{}m", color)
-    };
-    // 构建输出字符串
-    let output = format!(
-        "{}{}{}{}\x1b[0m{}",
-        color_code, prefix, sep, text, end
-    );
-    // 打印输出，不添加额外换行
-    print!("{}", output);
-}
-
-
-fn get_formatted_time() -> String {
-    Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
-}
-
-
-fn server_info(
-                ip: &str,
-                method: &str,
-                route: &str,
-            )
-{
-    /*
-    # """
-    # [IP] [TIME] [METHOD] [REQUESTS]
-    # """
-    */
-    let time: String = get_formatted_time();
-    let output: String = format!("[{}] [{}] [{}] [{}]", ip, time, method, route);
-    println!("{}", output);
-}
-
-
-fn get_header_value<'a>(
-                        req: &'a HttpRequest,
-                        header_name: &str) -> Option<&'a str>
-{
-    req.headers().get(header_name)?.to_str().ok()
-}
-
-
-fn get_client_ip(req: &HttpRequest) -> String {
-    // 优先检查 CF-Connecting-IP (Cloudflare 提供的真实 IP 头)
-    if let Some(ip) = get_header_value(&req, "CF-Connecting-IP") {
-        return ip.to_string();
-    }
-
-    // 其次检查 X-Forwarded-For 头
-    if let Some(ip) = get_header_value(&req, "X-Forwarded-For") {
-        // X-Forwarded-For 可能包含多个 IP，取第一个
-        let first_ip = ip.split(',').next().unwrap_or(ip).trim();
-        return first_ip.to_string();
-    }
-
-    // 如果没有上述头信息，使用远程地址
-    let conn_info = req.connection_info();
-    match conn_info.peer_addr() {
-        Some(ip_str) => {
-            // 尝试解析为 SocketAddr 以提取纯 IP 部分
-            match ip_str.parse::<SocketAddr>() {
-                Ok(addr) => addr.ip().to_string(),
-                Err(_) =>  ip_str.to_string(),
-            }
-        }
-        None => "Unknown".to_string(),
-    }
-}
 
 
 // 会话结构体
@@ -240,15 +151,17 @@ async fn open_db(
     sessions: Data<SessionManager>,
     req: Json<PathRequest>,
     session_id: Option<String>,
-    req2: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req2).as_str(),
-        req2.method().as_str(),
-        req2.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
-    
+
     let (session_id, session) = get_or_create_session(sessions, session_id).await;
+    println!(" * Create Session-ID: {}", session_id.clone());
+
     let mut store = session.store.lock().await;
 
     match KVStore::open(&req.path, None) {
@@ -276,16 +189,19 @@ async fn open_db(
 #[get("/api/close")]
 async fn close_db(
     sessions: Data<SessionManager>,
-    session_id: Option<String>,
-    req: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req).as_str(),
-        req.method().as_str(),
-        req.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
-    
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     let mut store = session.store.lock().await;
 
     if let Some(kv_store) = store.take() {
@@ -312,16 +228,19 @@ async fn close_db(
 async fn put_value(
     sessions: Data<SessionManager>,
     req: Json<Vec<KeyValueRequest>>,
-    session_id: Option<String>,
-    req2: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req2).as_str(),
-        req2.method().as_str(),
-        req2.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
-    
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
+
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -368,16 +287,19 @@ async fn put_value(
 async fn get_value(
     sessions: Data<SessionManager>,
     query: web::Query<KeyValueRequest>,
-    session_id: Option<String>,
-    req: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req).as_str(),
-        req.method().as_str(),
-        req.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
-    
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -424,15 +346,20 @@ async fn get_value(
 async fn delete_value(
     sessions: Data<SessionManager>,
     req: Json<KeyValueRequest>,
-    session_id: Option<String>,
-    req2: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req2).as_str(),
-        req2.method().as_str(),
-        req2.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
+    
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
+    
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -466,16 +393,19 @@ async fn delete_value(
 #[get("/api/id/get")]
 async fn get_identifier(
     sessions: Data<SessionManager>,
-    session_id: Option<String>,
-    req: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req).as_str(),
-        req.method().as_str(),
-        req.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
     let store = session.store.lock().await;
 
     let kv_store = match store.as_ref() {
@@ -501,16 +431,19 @@ async fn get_identifier(
 async fn set_identifier(
     sessions: Data<SessionManager>,
     req: Json<IdentifierRequest>,
-    session_id: Option<String>,
-    req2: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req2).as_str(),
-        req2.method().as_str(),
-        req2.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -544,16 +477,19 @@ async fn set_identifier(
 #[get("/api/current")]
 async fn get_current(
     sessions: Data<SessionManager>,
-    session_id: Option<String>,
-    req: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req).as_str(),
-        req.method().as_str(),
-        req.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
     *session.last_active.lock().await = Instant::now();
 
     let path = session.current_path.lock().await.clone().unwrap_or_default();  // 修改这里
@@ -567,16 +503,20 @@ async fn get_current(
 #[get("/api/compact")]
 async fn compact_db(
     sessions: Data<SessionManager>,
-    session_id: Option<String>,
-    req: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req).as_str(),
-        req.method().as_str(),
-        req.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
+
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -611,16 +551,20 @@ async fn compact_db(
 async fn execute_command(
     sessions: Data<SessionManager>,
     command: String,
-    session_id: Option<String>,
-    req: HttpRequest
+    http_req: HttpRequest
 ) -> impl Responder {
     server_info(
-        get_client_ip(&req).as_str(),
-        req.method().as_str(),
-        req.path()
+        get_client_ip(&http_req).as_str(),
+        http_req.method().as_str(),
+        http_req.path()
     );
+
+    let session_id = get_session_from_header(&http_req);
+    println!(" * Session-ID: {}", session_id.clone());
+    format_header(&http_req);
+
+    let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     
-    let (session_id, session) = get_or_create_session(sessions, session_id).await;
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
