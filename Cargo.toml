@@ -1,18 +1,37 @@
 [package]
-name = "wind-kvstore"
-version = "0.0.1"
+name = "kvstore"
+version = "0.0.2"
 edition = "2024"
 build = "build.rs"
 
 [dependencies]
 anyhow = "1.0.98"
 byteorder = "1.5.0"
+chrono = "0.4.41"
+env_logger = "0.11.3"
 linefeed = "0.6.0"
 linked-hash-map = "0.5.6"
-log = "0.4.27"
 memmap2 = "0.9.7"
 regex = "1.11.1"
+serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0.12"
+tokio = { version = "1", features = ["full"] }
+log = "0.4"
+uuid = { version = "1.7", features = ["v4"] }
+dashmap = "6.1.0"
+toml = "0.9.2"
+dirs = "6.0.0"
+actix-web = "4.11.0"
+futures = "0.3.31"
+
 
 [build-dependencies]
 chrono = "0.4.41"
+
+[[bin]]
+name = "shell"
+path = "src/shell_main.rs"
+
+[[bin]]
+name = "server"
+path = "src/server_main.rs"
