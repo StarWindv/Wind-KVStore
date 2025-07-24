@@ -43,10 +43,10 @@ cargo run --bin server --release
 ```
 
 ## >_ 交互式 Shell 使用指南
-[shell使用说明](https://github.com/starwindv/wind-kvstore/doc/readme_shell.md)
+[shell使用说明](https://github.com/starwindv/wind-kvstore/doc/readme_shell_cn.md)
 
 ## 🖥️ 服务器使用指南
-[服务器使用说明](https://github.com/starwindv/wind-kvstore/doc/readme_server.md)
+[服务器使用说明](https://github.com/starwindv/wind-kvstore/doc/readme_server_cn.md)
 
 ## 📦 作为库使用
 
