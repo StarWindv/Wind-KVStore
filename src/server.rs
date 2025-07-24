@@ -5,7 +5,8 @@ use crate::utils::{
     parse_delete_command, parse_identifier_get,
     parse_identifier_set, parse_compact,
     server_info, get_client_ip, format_header,
-    get_session_from_header, get_lan_ip
+    get_session_from_header, get_lan_ip,
+    format_session_id
 };
 use actix_web::{
     get, post,
@@ -16,13 +17,26 @@ use actix_web::{
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use futures::executor::block_on;
-use log::{error, info};
+use log::error;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use tokio::time;
 use uuid::Uuid;
+use std::sync::OnceLock;
+use clap::Parser;
+
+
+static PRINT_HEADER: OnceLock<bool> = OnceLock::new();
+
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    header: bool
+}
 
 
 // 会话结构体
@@ -97,7 +111,6 @@ fn init_session_manager() -> SessionManager {
 
 
 // 会话清理任务
-// 在 start_session_cleanup 函数中，将 retain 方法的异步闭包修改为同步方式获取锁
 fn start_session_cleanup(manager: SessionManager) {
     tokio::spawn(async move {
         let mut interval = time::interval(Duration::from_secs(60 * 5)); // 每5分钟检查一次
@@ -160,7 +173,8 @@ async fn open_db(
     );
 
     let (session_id, session) = get_or_create_session(sessions, session_id).await;
-    println!(" * Create Session-ID: {}", session_id.clone());
+    println!(" * Create Session-ID: {}\n", session_id.clone());
+    format_header(&http_req, PRINT_HEADER.clone());
 
     let mut store = session.store.lock().await;
 
@@ -197,8 +211,8 @@ async fn close_db(
         http_req.path()
     );
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
@@ -237,8 +251,8 @@ async fn put_value(
     );
 
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     let mut store = session.store.lock().await;
@@ -295,8 +309,8 @@ async fn get_value(
         http_req.path()
     );
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
@@ -355,8 +369,8 @@ async fn delete_value(
     );
 
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
 
@@ -401,8 +415,8 @@ async fn get_identifier(
         http_req.path()
     );
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
 
@@ -439,8 +453,8 @@ async fn set_identifier(
         http_req.path()
     );
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
 
@@ -485,8 +499,8 @@ async fn get_current(
         http_req.path()
     );
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
 
@@ -512,8 +526,8 @@ async fn compact_db(
     );
 
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
 
@@ -560,8 +574,8 @@ async fn execute_command(
     );
 
     let session_id = get_session_from_header(&http_req);
-    println!(" * Session-ID: {}", session_id.clone());
-    format_header(&http_req);
+    format_session_id(&session_id);
+    format_header(&http_req, PRINT_HEADER.clone());
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
 
@@ -577,9 +591,20 @@ async fn execute_command(
     };
 
     // 复用shell中的命令解析逻辑
-    let result = parse_and_execute(&command, kv_store).await.unwrap_or_else(|e| format!("Error: {}", e));
-
+    let mut arr: Vec<String> = Vec::new();
+    for cmd in command.split(";") {
+        if cmd == "" || cmd == " " {
+            continue;
+        }
+        // println!("cmd: {}", cmd);
+        arr.push(format!("\"{}: {}{}\"", cmd, parse_and_execute(cmd, kv_store)
+            .await
+            .unwrap_or_else(|e| format!("Error: {}", e)), ";"));
+    }
     *session.last_active.lock().await = Instant::now();
+
+    let result = arr.join(" ");
+    // println!("RESULT: {}", result);
 
     HttpResponse::Ok()
         .insert_header(("X-Session-ID", session_id))
@@ -640,18 +665,13 @@ async fn parse_and_execute(command: &str, store: &mut KVStore) -> Result<String>
 
 // 启动服务器
 pub async fn run_server() -> Result<()> {
-    // unsafe {
-    //     std::env::set_var("RUST_LOG", "debug");
-    // }
-
-    env_logger::init();
-    info!("Starting Wind-KVStore Server...");
+    let args = Args::parse();
+    PRINT_HEADER.set(args.header).expect("全局变量初始化完毕");
+    // println!("{:?}", PRINT_HEADER);
 
     let config = load_config()?;
-    info!("Loaded config: {}:{}", config.host, config.port);
 
     let sessions = init_session_manager();
-    info!("Server running at http://{}:{}", config.host, config.port);
 
     println!(" * Starting Wind-KVStore Server...");
     if config.host == "0.0.0.0" {
