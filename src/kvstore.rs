@@ -18,7 +18,7 @@ const PAGE_SIZE: usize = 1024; // 1KB 页大小
 const HEADER_SIZE: usize = 128; // 文件头大小
 const MAX_CACHE_SIZE: usize = 100 * 1024; // 100KB 缓存
 const OVERFLOW_THRESHOLD: usize = 900; // 溢出阈值
-const WAL_FILE_EXT: &str = ".wal"; // WAL文件后缀
+const WAL_FILE_EXT: &str = "wal"; // WAL文件后缀
 
 
 #[derive(Debug, Error)]
