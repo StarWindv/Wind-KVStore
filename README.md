@@ -1,193 +1,240 @@
 # Wind-KVStore
 
-[English](https://github.com/StarWindv/Wind-KVStore/blob/main/README.md)
+[中文](./README_CN.md)
 
 ![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange)
 
-Wind-KVStore 是一个轻量级、高效且持久的键值存储引擎，采用 Rust 实现。项目结合了高性能存储引擎与用户友好的命令行界面，适用于需要本地持久化存储的场景。
+Wind-KVStore is a lightweight, efficient, and persistent key-value storage engine implemented in Rust. This project combines a high-performance storage engine with a user-friendly command-line interface, making it suitable for scenarios requiring local persistent storage.
 
-## ✨ 功能特性
+## ✨ Features
 
-- **📁 持久化存储** - 数据安全写入磁盘，支持崩溃恢复
-- **📝 预写日志(WAL)** - 确保操作原子性和持久性
-- **⚡ 内存映射文件** - 提供高效的文件访问性能
-- **🗂️ LRU 缓存** - 自动管理热点数据缓存
-- **🔢 分页存储** - 支持溢出页处理大值数据
-- **♻️ 空闲页管理** - 高效复用磁盘空间
-- **🗜️ 数据库压缩** - 优化存储空间利用率
-- **>_ 交互式 Shell** - 提供直观的命令行操作界面
-- **🖥️ 服务器** - 提供清晰的服务器接口，天生支持会话管理
+- **📁 Persistent Storage** - Data is safely written to disk with crash recovery support
+- **📝 Write-Ahead Log (WAL)** - Ensures operation atomicity and durability
+- **⚡ Memory-Mapped Files** - Provides efficient file access performance
+- **🗂️ LRU Cache** - Automatically manages hot data caching
+- **🔢 Paged Storage** - Supports overflow pages for handling large values
+- **♻️ Free Page Management** - Efficiently reuses disk space
+- **🗜️ Database Compression** - Optimizes storage space utilization
+- **💻 Interactive Shell** - Provides an intuitive command-line interface
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 前置要求
+### Prerequisites
 
-- Rust工具链([安装指南](https://www.rust-lang.org/tools/install))
+- Rust toolchain ([installation guide](https://www.rust-lang.org/tools/install))
 
-### 安装与运行
+### Installation and Running
 
 ```bash
-# 克隆仓库
+# Clone the repository
 git clone https://github.com/starwindv/wind-kvstore
 cd wind-kvstore
 
-# 构建项目
+# Build the project
 cargo build --release
 
-# 运行交互式 Shell
-cargo run --bin shell --release
-
-# 运行服务器
-cargo run --bin server --release
+# Run the interactive shell
+cargo run
 ```
 
-## 💻 交互式 Shell 使用指南
-[shell使用说明](https://github.com/starwindv/wind-kvstore/doc/readme_shell.md)
+## 💻 Interactive Shell Guide
 
-## 📦 作为库使用
+### Startup Interface
+```
+Welcome to Wind-KVStore!
 
-### 添加依赖
+               ██╗    ██╗    ██╗    ███╗   ██╗    ██████╗
+               ██║    ██║    ██║    ████╗  ██║    ██╔══██╗
+               ██║ █╗ ██║    ██║    ██╔██╗ ██║    ██║  ██║
+               ██║███╗██║    ██║    ██║╚██╗██║    ██║  ██║
+               ╚███╔███╔╝    ██║    ██║ ╚████║    ██████╔╝
+                ╚══╝╚══╝     ╚═╝    ╚═╝  ╚═══╝    ╚═════╝
 
-在 `Cargo.toml` 中添加：
+v0.0.1 [compiled 2025-07-22 10:53:17]
+Type ".help;" for usage hints.
+
+KVStore >
+```
+
+### Shell Operation Examples
+
+```
+.open my_database.db;
+
+PUT "username":"john_doe", "email":"john@example.com";
+
+GET WHERE KEY="username";
+
+DEL WHERE KEY="email";
+
+COMPACT;
+
+IDENTIFIER SET "UserDatabase";
+
+IDENTIFIER GET;
+
+.close;
+
+.quit;
+```
+Note: Comment formats like `--` are not currently supported.
+
+### 📚 Shell Command Reference
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `.open <path>` | Open/create a database | `.open data.db;` |
+| `.close` | Close the current database | `.close;` |
+| `.help` | View help information | `.help;` |
+| `.clear` | Clear the screen | `.clear;` |
+| `.title` | Display title information | `.title;` |
+| `.quit` | Exit the program | `.quit;` |
+| `PUT "key":"value"` | Insert a key-value pair | `PUT "name":"Alice";` |
+| `GET WHERE KEY="key"` | Retrieve a value by key | `GET WHERE KEY="age";` |
+| `DEL WHERE KEY="key"` | Delete a key-value pair | `DEL WHERE KEY="temp";` |
+| `COMPACT` | Compact the database | `COMPACT;` |
+| `IDENTIFIER SET "id"` | Set the database identifier | `IDENTIFIER SET "AppDB";` |
+| `IDENTIFIER GET` | Get the database identifier | `IDENTIFIER GET;` |
+
+## 📦 Using as a Library
+
+### Adding Dependency
+
+Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
 wind-kvstore = { git = "https://github.com/starwindv/wind-kvstore" }
 ```
 
-### lib用法示例
+### Library Usage Example
 
 ```rust
 use wind_kvstore::KVStore;
 use anyhow::Result;
 
 fn main() -> Result<()> {
-    // 打开数据库
+    // Open the database
     let mut store = KVStore::open("app_data.db", Some("MyAppDB"))?;
     
-    // 存储数据
+    // Store data
     store.put(b"username", b"alice")?;
     
-    // 检索数据
+    // Retrieve data
     if let Some(value) = store.get(b"username")? {
         println!("Username: {}", String::from_utf8_lossy(&value));
     }
     
-    // 删除数据
+    // Delete data
     store.delete(b"username")?;
     
-    // 设置数据库标识符
+    // Set database identifier
     store.set_identifier("UserDatabase")?;
     
-    // 压缩数据库
+    // Compact the database
     store.compact()?;
     
-    // 关闭数据库
+    // Close the database
     store.close()?;
     
     Ok(())
 }
 ```
 
-### 核心 API
+### Core API
 
 ```rust
 impl KVStore {
-    /// 打开或创建数据库
+    /// Open or create a database
     pub fn open<P: AsRef<Path>>(
         path: P, 
         db_identifier: Option<&str>
-    ) -> Result<Self>{}
+    ) -> Result<Self>;
     
-    /// 存储键值对
-    pub fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()>{}
+    /// Store a key-value pair
+    pub fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
     
-    /// 检索键值
-    pub fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>>{}
+    /// Retrieve a value by key
+    pub fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>>;
     
-    /// 删除键值
-    pub fn delete(&mut self, key: &[u8]) -> Result<()>{}
+    /// Delete a key-value pair
+    pub fn delete(&mut self, key: &[u8]) -> Result<()>;
     
-    /// 压缩数据库
-    pub fn compact(&mut self) -> Result<()>{}
+    /// Compact the database
+    pub fn compact(&mut self) -> Result<()>;
     
-    /// 获取数据库标识符
-    pub fn get_identifier(&self) -> &str{}
+    /// Get the database identifier
+    pub fn get_identifier(&self) -> &str;
     
-    /// 设置数据库标识符
-    pub fn set_identifier(&mut self, identifier: &str) -> Result<()>{}
+    /// Set the database identifier
+    pub fn set_identifier(&mut self, identifier: &str) -> Result<()>;
     
-    /// 关闭数据库
-    pub fn close(mut self) -> Result<()>{}
+    /// Close the database
+    pub fn close(mut self) -> Result<()>;
 }
 ```
 
-## 🏗️ 项目结构
+## 🏗️ Project Structure
 
-```plaintext
+```
 .
-├── build.rs            # 构建脚本（记录编译时间）
-├── Cargo.toml          # 项目配置和依赖管理
-├── README.md           # 项目介绍文档
-├── README_CN.md        # 项目介绍中文文档
+├── build.rs            # Build script (records compilation time)
+├── Cargo.toml          # Project configuration and dependency management
+├── README.md           # Project documentation
+├── README_CN.md        # Chinese project documentation
 └── src
-    ├── config.rs       # 服务器配置获取器
-    ├── kvstore.rs      # 键值存储引擎核心实现
-    ├── server.rs       # 服务器主逻辑
-    ├── server_main.rs  # 服务器入口点
-    ├── shell.rs        # 交互shell主逻辑
-    ├── shell_main.rs   # 交互shell入口点
-    └── utils.rs        # 辅助函数
+    ├── kvstore.rs      # Core implementation of the key-value storage engine
+    ├── main.rs         # Program entry point
+    └── shell.rs        # Implementation of the interactive command-line shell
 ```
 
-## ⚙️ 技术实现
+## ⚙️ Technical Implementation
 
-### 存储架构
+### Storage Architecture
 ```
 +-----------------------+
-|      文件头 (128B)     |
+|      File Header (128B) |
 +-----------------------+
-|      页头 (16B)        |
+|      Page Header (16B)  |
 +-----------------------+
-|       键值数据          |
+|       Key-Value Data    |
 +-----------------------+
-|      溢出页指针         |
+|      Overflow Page Pointer |
 +-----------------------+
 |         ...           |
 +-----------------------+
 ```
 
-### 关键特性
+### Key Features
 
-1. **分页存储**
-    - 固定大小页面（默认 1KB）
-    - 支持溢出页处理大值数据
-    - 空闲页链表管理
+1. **Paged Storage**  
+   - Fixed-size pages (1KB by default)
+   - Supports overflow pages for large values
+   - Free page linked list management
 
-2. **预写日志**
-    - 操作日志记录
-    - 崩溃后自动恢复
-    - 原子性操作保证
+2. **Write-Ahead Log**  
+   - Operation log recording
+   - Automatic recovery after crashes
+   - Atomic operation guarantees
 
-3. **缓存管理**
-    - LRU 缓存策略
-    - 自动热点数据管理
-    - 100KB 默认缓存大小
+3. **Cache Management**  
+   - LRU caching strategy
+   - Automatic hot data management
+   - 100KB default cache size
 
-4. **空间优化**
-    - 自动空闲页回收
-    - 在线数据库压缩
-    - 高效存储布局
+4. **Space Optimization**  
+   - Automatic free page recycling
+   - Online database compression
+   - Efficient storage layout
 
-## 🤝 贡献指南
+## 🤝 Contribution Guide
 
-我们欢迎任何形式的贡献！
-我们建议您在做出贡献时：
-- 更新相关文档
-- 提交清晰的 PR 描述
-- 不必为了交流语言而困扰，我们接受英文与中文描述，如果您对这两种语言不够熟悉，您当然可以使用自己熟悉的语言
+We welcome contributions in any form!
+We recommend that when making contributions, you:
+ - Update relevant documentation
+ - Submit clear PR descriptions
 
-## 📜 许可证
+## 📜 License
 
-本项目采用 [MIT 许可证](https://github.com/StarWindv/Wind-KVStore/LICENSE)
+This project is licensed under the [MIT License](https://github.com/StarWindv/Wind-KVStore/LICENSE)
