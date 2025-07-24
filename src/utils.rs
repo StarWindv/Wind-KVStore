@@ -2,6 +2,7 @@ use regex::Regex;
 use anyhow::anyhow;
 use std::env;
 use std::net::SocketAddr;
+use std::sync::OnceLock;
 use actix_web::HttpRequest;
 use chrono::Local;
 use if_addrs::get_if_addrs;
@@ -217,10 +218,16 @@ pub fn get_client_ip(req: &HttpRequest) -> String {
 }
 
 
-pub fn format_header(req: &HttpRequest) {
-    println!(" * Receive Headers: ");
-    for (name, value) in req.headers() {
-        println!("   - {}: {}", name, value.to_str().unwrap_or("Unknown"));
+pub fn format_header(req: &HttpRequest, output: OnceLock<bool>) {
+    // println!("{:?}", output);
+    if let Some (flag) = output.get() {
+        // println!("flag: {}", flag);
+        if *flag {
+            println!(" * Receive Headers: ");
+            for (name, value) in req.headers() {
+                println!("   - {}: {}", name, value.to_str().unwrap_or("Unknown"));
+            }
+        }
     }
 }
 
@@ -234,6 +241,7 @@ pub fn get_session_from_header(http_req: &HttpRequest) -> String{
         .to_string()
 }
 
+
 pub fn get_lan_ip() -> Option<String> {
     get_if_addrs().ok().and_then(|addrs| {
         addrs.into_iter()
@@ -242,4 +250,9 @@ pub fn get_lan_ip() -> Option<String> {
             .map(|iface| iface.ip().to_string())
             .next()
     })
+}
+
+
+pub fn format_session_id(session_id: &String) {
+    println!(" * Session-ID: {} \n ", session_id);
 }
