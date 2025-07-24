@@ -5,7 +5,7 @@
 ![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange)
 
-Wind-KVStore 是一个轻量级、高效且持久的键值存储引擎，采用 Rust 实现。项目结合了高性能存储引擎与用户友好的命令行界面，适用于需要本地持久化存储的场景。
+Wind-KVStore 是一个轻量级、高效且持久的键值存储引擎，采用 Rust 实现。项目结合了高性能存储引擎、用户友好的命令行界面和网络服务器，适用于需要本地持久化存储的场景。
 
 ## ✨ 功能特性
 
@@ -134,7 +134,8 @@ impl KVStore {
 ├── Cargo.toml          # 项目配置和依赖管理
 ├── README.md           # 项目介绍文档
 ├── README_CN.md        # 项目介绍中文文档
-└── src
+├── doc/                # 项目的其他文档
+└── src/
     ├── config.rs       # 服务器配置获取器
     ├── kvstore.rs      # 键值存储引擎核心实现
     ├── server.rs       # 服务器主逻辑
