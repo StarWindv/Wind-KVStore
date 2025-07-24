@@ -1,7 +1,9 @@
 use regex::Regex;
 use anyhow::anyhow;
 use std::env;
-
+use std::net::SocketAddr;
+use actix_web::HttpRequest;
+use chrono::Local;
 
 pub fn output_tile(is_server: Option<bool>) {
     let is_server = is_server.unwrap_or(false);
@@ -121,4 +123,111 @@ pub fn parse_compact(command: &str) -> anyhow::Result<()> {
     } else {
         Err(anyhow!("Invalid COMPACT command"))
     }
+}
+
+
+#[allow(dead_code)]
+fn format_print(
+    prefix: Option<&str>,
+    text: Option<String>,
+    color: Option<&str>,
+    sep: Option<&str>,
+    end: Option<&str>,
+) {
+    // 设置默认值
+    let prefix = prefix.unwrap_or("[NONE]");
+    let text = text.unwrap_or("EMPTY".parse().unwrap());
+    let color = color.unwrap_or("0");
+    let sep = sep.unwrap_or(" ");
+    let end = end.unwrap_or("\n");
+
+    // 处理颜色代码
+    let color_code = if color.starts_with('\\') {
+        color.to_string()
+    } else {
+        format!("\x1b[{}m", color)
+    };
+    // 构建输出字符串
+    let output = format!(
+        "{}{}{}{}\x1b[0m{}",
+        color_code, prefix, sep, text, end
+    );
+    // 打印输出，不添加额外换行
+    print!("{}", output);
+}
+
+
+fn get_formatted_time() -> String {
+    Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+
+pub fn server_info(
+    ip: &str,
+    method: &str,
+    route: &str,
+)
+{
+    /*
+    # """
+    # [IP] [TIME] [METHOD] [REQUESTS]
+    # """
+    */
+    let time: String = get_formatted_time();
+    let output: String = format!("[{}] [{}] [{}] [{}]", ip, time, method, route);
+    println!("{}", output);
+}
+
+
+fn get_header_value<'a>(
+    req: &'a HttpRequest,
+    header_name: &str) -> Option<&'a str>
+{
+    req.headers().get(header_name)?.to_str().ok()
+}
+
+
+pub fn get_client_ip(req: &HttpRequest) -> String {
+    // 优先检查 CF-Connecting-IP (Cloudflare 提供的真实 IP 头)
+    if let Some(ip) = get_header_value(&req, "CF-Connecting-IP") {
+        return ip.to_string();
+    }
+
+    // 其次检查 X-Forwarded-For 头
+    if let Some(ip) = get_header_value(&req, "X-Forwarded-For") {
+        // X-Forwarded-For 可能包含多个 IP，取第一个
+        let first_ip = ip.split(',').next().unwrap_or(ip).trim();
+        return first_ip.to_string();
+    }
+
+    // 如果没有上述头信息，使用远程地址
+    let conn_info = req.connection_info();
+    match conn_info.peer_addr() {
+        Some(ip_str) => {
+            // 尝试解析为 SocketAddr 以提取纯 IP 部分
+            match ip_str.parse::<SocketAddr>() {
+                Ok(addr) => addr.ip().to_string(),
+                Err(_) =>  ip_str.to_string(),
+            }
+        }
+        None => "Unknown".to_string(),
+    }
+}
+
+
+pub fn format_header(req: &HttpRequest) {
+    println!(" * Receive Headers: ");
+    for (name, value) in req.headers() {
+        println!("   - {}: {}", name, value.to_str().unwrap_or("Unknown"));
+    }
+}
+
+
+pub fn get_session_from_header(http_req: &HttpRequest) -> String{
+    http_req.headers()
+        .iter()
+        .find(|(name, _)| name.as_str().eq_ignore_ascii_case("x-session-id"))
+        .map(|(_, value)| value.to_str().unwrap_or("No-session-id-content"))
+        .unwrap_or("No-session-id-field")
+        .to_string()
 }
