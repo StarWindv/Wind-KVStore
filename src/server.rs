@@ -5,7 +5,7 @@ use crate::utils::{
     parse_delete_command, parse_identifier_get,
     parse_identifier_set, parse_compact,
     server_info, get_client_ip, format_header,
-    get_session_from_header
+    get_session_from_header, get_lan_ip
 };
 use actix_web::{
     get, post,
@@ -353,13 +353,13 @@ async fn delete_value(
         http_req.method().as_str(),
         http_req.path()
     );
-    
+
     let session_id = get_session_from_header(&http_req);
     println!(" * Session-ID: {}", session_id.clone());
     format_header(&http_req);
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
-    
+
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -405,7 +405,7 @@ async fn get_identifier(
     format_header(&http_req);
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
-    
+
     let store = session.store.lock().await;
 
     let kv_store = match store.as_ref() {
@@ -443,7 +443,7 @@ async fn set_identifier(
     format_header(&http_req);
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
-    
+
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -489,7 +489,7 @@ async fn get_current(
     format_header(&http_req);
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
-    
+
     *session.last_active.lock().await = Instant::now();
 
     let path = session.current_path.lock().await.clone().unwrap_or_default();  // 修改这里
@@ -516,7 +516,7 @@ async fn compact_db(
     format_header(&http_req);
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
-    
+
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -564,7 +564,7 @@ async fn execute_command(
     format_header(&http_req);
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
-    
+
     let mut store = session.store.lock().await;
 
     let kv_store = match store.as_mut() {
@@ -654,8 +654,12 @@ pub async fn run_server() -> Result<()> {
     info!("Server running at http://{}:{}", config.host, config.port);
 
     println!(" * Starting Wind-KVStore Server...");
-    println!(" * Server start on: http://{}:{}", config.host, config.port);
-
+    if config.host == "0.0.0.0" {
+        println!(" * Server start on: http://{}:{}", "127.0.0.1", config.port);
+        println!(" * Server start on: http://{}:{}", get_lan_ip().unwrap().to_string(), config.port);
+    } else {
+        println!(" * Server start on: http://{}:{}", config.host, config.port);
+    }
     HttpServer::new(move || {
         App::new()
             .app_data(Data::new(sessions.clone()))
