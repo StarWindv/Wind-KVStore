@@ -1,6 +1,6 @@
 # Wind-KVStore
 
-[English](./README.md)
+[English](https://github.com/StarWindv/Wind-KVStore/blob/main/README.md)
 
 ![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange)
@@ -16,7 +16,8 @@ Wind-KVStore 是一个轻量级、高效且持久的键值存储引擎，采用 
 - **🔢 分页存储** - 支持溢出页处理大值数据
 - **♻️ 空闲页管理** - 高效复用磁盘空间
 - **🗜️ 数据库压缩** - 优化存储空间利用率
-- **💻 交互式 Shell** - 提供直观的命令行操作界面
+- **>_ 交互式 Shell** - 提供直观的命令行操作界面
+- **🖥️ 服务器** - 提供清晰的服务器接口，天生支持会话管理
 
 ## 🚀 快速开始
 
@@ -35,66 +36,17 @@ cd wind-kvstore
 cargo build --release
 
 # 运行交互式 Shell
-cargo run
+cargo run --bin shell --release
+
+# 运行服务器
+cargo run --bin server --release
 ```
 
-## 💻 交互式 Shell 使用指南
+## >_ 交互式 Shell 使用指南
+[shell使用说明](https://github.com/starwindv/wind-kvstore/doc/readme_shell.md)
 
-### 启动界面
-```
-Welcome to Wind-KVStore!
-
-██╗    ██╗    ██╗    ███╗   ██╗    ██████╗ 
-██║    ██║    ██║    ████╗  ██║    ██╔══██╗
-██║ █╗ ██║    ██║    ██╔██╗ ██║    ██║  ██║
-██║███╗██║    ██║    ██║╚██╗██║    ██║  ██║
-╚███╔███╔╝    ██║    ██║ ╚████║    ██████╔╝
- ╚══╝╚══╝     ╚═╝    ╚═╝  ╚═══╝    ╚═════╝ 
-
-v0.0.1 [compiled 2023-10-15 14:30:00]
-Type ".help;" for usage hints.
-
-KVStore > 
-```
-
-### Shell操作示例
-
-```
-.open my_database.db;
-
-PUT "username":"john_doe", "email":"john@example.com";
-
-GET WHERE KEY="username";
-
-DEL WHERE KEY="email";
-
-COMPACT;
-
-IDENTIFIER SET "UserDatabase";
-
-IDENTIFIER GET;
-
-.close;
-
-.quit;
-```
-注意：当前不支持`--`等注释格式
-### 📚 Shell 命令参考
-
-| 命令 | 描述 | 示例 |
-|------|------|------|
-| `.open <path>` | 打开/创建数据库 | `.open data.db;` |
-| `.close` | 关闭当前数据库 | `.close;` |
-| `.help` | 查看帮助信息 | `.help;` |
-| `.clear` | 清屏 | `.clear;` |
-| `.title` | 显示标题信息 | `.title;` |
-| `.quit` | 退出程序 | `.quit;` |
-| `PUT "key":"value"` | 插入键值对 | `PUT "name":"Alice";` |
-| `GET WHERE KEY="key"` | 查询键值 | `GET WHERE KEY="age";` |
-| `DEL WHERE KEY="key"` | 删除键值 | `DEL WHERE KEY="temp";` |
-| `COMPACT` | 压缩数据库 | `COMPACT;` |
-| `IDENTIFIER SET "id"` | 设置数据库标识符 | `IDENTIFIER SET "AppDB";` |
-| `IDENTIFIER GET` | 获取数据库标识符 | `IDENTIFIER GET;` |
+## 🖥️ 服务器使用指南
+[服务器使用说明](https://github.com/starwindv/wind-kvstore/doc/readme_server.md)
 
 ## 📦 作为库使用
 
@@ -149,43 +101,47 @@ impl KVStore {
     pub fn open<P: AsRef<Path>>(
         path: P, 
         db_identifier: Option<&str>
-    ) -> Result<Self>;
+    ) -> Result<Self>{}
     
     /// 存储键值对
-    pub fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()>;
+    pub fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()>{}
     
     /// 检索键值
-    pub fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>>;
+    pub fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>>{}
     
     /// 删除键值
-    pub fn delete(&mut self, key: &[u8]) -> Result<()>;
+    pub fn delete(&mut self, key: &[u8]) -> Result<()>{}
     
     /// 压缩数据库
-    pub fn compact(&mut self) -> Result<()>;
+    pub fn compact(&mut self) -> Result<()>{}
     
     /// 获取数据库标识符
-    pub fn get_identifier(&self) -> &str;
+    pub fn get_identifier(&self) -> &str{}
     
     /// 设置数据库标识符
-    pub fn set_identifier(&mut self, identifier: &str) -> Result<()>;
+    pub fn set_identifier(&mut self, identifier: &str) -> Result<()>{}
     
     /// 关闭数据库
-    pub fn close(mut self) -> Result<()>;
+    pub fn close(mut self) -> Result<()>{}
 }
 ```
 
 ## 🏗️ 项目结构
 
-```
+```plaintext
 .
 ├── build.rs            # 构建脚本（记录编译时间）
 ├── Cargo.toml          # 项目配置和依赖管理
-├── README.md           # 项目文档
-├── README_CN.md           # 项目中文文档
+├── README.md           # 项目介绍文档
+├── README_CN.md        # 项目介绍中文文档
 └── src
+    ├── config.rs       # 服务器配置获取器
     ├── kvstore.rs      # 键值存储引擎核心实现
-    ├── main.rs         # 程序入口点
-    └── shell.rs        # 交互式命令行 Shell 实现
+    ├── server.rs       # 服务器主逻辑
+    ├── server_main.rs  # 服务器入口点
+    ├── shell.rs        # 交互shell主逻辑
+    ├── shell_main.rs   # 交互shell入口点
+    └── utils.rs        # 辅助函数
 ```
 
 ## ⚙️ 技术实现
@@ -207,32 +163,33 @@ impl KVStore {
 
 ### 关键特性
 
-1. **分页存储**  
-   - 固定大小页面（默认 1KB）
-   - 支持溢出页处理大值数据
-   - 空闲页链表管理
+1. **分页存储**
+    - 固定大小页面（默认 1KB）
+    - 支持溢出页处理大值数据
+    - 空闲页链表管理
 
-2. **预写日志**  
-   - 操作日志记录
-   - 崩溃后自动恢复
-   - 原子性操作保证
+2. **预写日志**
+    - 操作日志记录
+    - 崩溃后自动恢复
+    - 原子性操作保证
 
-3. **缓存管理**  
-   - LRU 缓存策略
-   - 自动热点数据管理
-   - 100KB 默认缓存大小
+3. **缓存管理**
+    - LRU 缓存策略
+    - 自动热点数据管理
+    - 100KB 默认缓存大小
 
-4. **空间优化**  
-   - 自动空闲页回收
-   - 在线数据库压缩
-   - 高效存储布局
+4. **空间优化**
+    - 自动空闲页回收
+    - 在线数据库压缩
+    - 高效存储布局
 
 ## 🤝 贡献指南
 
 我们欢迎任何形式的贡献！
 我们建议您在做出贡献时：
- - 更新相关文档
- - 提交清晰的 PR 描述
+- 更新相关文档
+- 提交清晰的 PR 描述
+- 不必为了交流语言而困扰，我们接受英文与中文描述，如果您对这两种语言不够熟悉，您当然可以使用自己熟悉的语言
 
 ## 📜 许可证
 
