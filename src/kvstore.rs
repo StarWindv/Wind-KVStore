@@ -13,7 +13,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
 // 常量定义
-const MAGIC_NUMBER: u32 = 0x4B5644; // 'KVD' in ASCII
+const MAGIC_NUMBER: u32 = 0x565453; // 'STV' in ASCII
 const PAGE_SIZE: usize = 1024; // 1KB 页大小
 const HEADER_SIZE: usize = 128; // 文件头大小
 const MAX_CACHE_SIZE: usize = 100 * 1024; // 100KB 缓存
