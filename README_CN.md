@@ -42,7 +42,7 @@ cargo run --bin shell --release
 cargo run --bin server --release
 ```
 
-## >_ 交互式 Shell 使用指南
+## \>_ 交互式 Shell 使用指南
 [shell使用说明](https://github.com/StarWindv/Wind-KVStore/blob/main/doc/readme_shell_cn.md)
 
 ## 🖥️ 服务器使用指南
