@@ -34,6 +34,7 @@ pub enum KvError {
     #[error("UTF-8 error: {0}")]
     Utf8(#[from] std::str::Utf8Error),
     #[error("Other error: {0}")]
+    #[allow(dead_code)]
     Other(String),
 }
 
@@ -205,10 +206,14 @@ impl LRUCache {
         self.curr_size += value_size;
     }
 
+
+    #[allow(dead_code)]
     fn contains_key(&self, key: u32) -> bool {
         self.cache.contains_key(&key)
     }
 
+
+    #[allow(dead_code)]
     fn remove(&mut self, key: u32) -> Option<Vec<u8>> {
         self.cache.remove(&key).map(|v| {
             self.curr_size -= v.len();
@@ -216,6 +221,8 @@ impl LRUCache {
         })
     }
 
+
+    #[allow(dead_code)]
     fn clear(&mut self) {
         self.cache.clear();
         self.curr_size = 0;
