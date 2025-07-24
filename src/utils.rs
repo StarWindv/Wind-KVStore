@@ -4,6 +4,8 @@ use std::env;
 use std::net::SocketAddr;
 use actix_web::HttpRequest;
 use chrono::Local;
+use if_addrs::get_if_addrs;
+
 
 pub fn output_tile(is_server: Option<bool>) {
     let is_server = is_server.unwrap_or(false);
@@ -230,4 +232,14 @@ pub fn get_session_from_header(http_req: &HttpRequest) -> String{
         .map(|(_, value)| value.to_str().unwrap_or("No-session-id-content"))
         .unwrap_or("No-session-id-field")
         .to_string()
+}
+
+pub fn get_lan_ip() -> Option<String> {
+    get_if_addrs().ok().and_then(|addrs| {
+        addrs.into_iter()
+            // 过滤回环接口和非IPv4地址（按需调整）
+            .filter(|iface| !iface.is_loopback() && iface.ip().is_ipv4())
+            .map(|iface| iface.ip().to_string())
+            .next()
+    })
 }
