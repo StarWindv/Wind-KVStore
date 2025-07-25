@@ -129,42 +129,12 @@ pub fn parse_compact(command: &str) -> anyhow::Result<()> {
 }
 
 
-#[allow(dead_code)]
-fn format_print(
-    prefix: Option<&str>,
-    text: Option<String>,
-    color: Option<&str>,
-    sep: Option<&str>,
-    end: Option<&str>,
-) {
-    // 设置默认值
-    let prefix = prefix.unwrap_or("[NONE]");
-    let text = text.unwrap_or("EMPTY".parse().unwrap());
-    let color = color.unwrap_or("0");
-    let sep = sep.unwrap_or(" ");
-    let end = end.unwrap_or("\n");
-
-    // 处理颜色代码
-    let color_code = if color.starts_with('\\') {
-        color.to_string()
-    } else {
-        format!("\x1b[{}m", color)
-    };
-    // 构建输出字符串
-    let output = format!(
-        "{}{}{}{}\x1b[0m{}",
-        color_code, prefix, sep, text, end
-    );
-    // 打印输出，不添加额外换行
-    print!("{}", output);
-}
-
-
 fn get_formatted_time() -> String {
     Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
 
+#[allow(unused)]
 pub fn server_info(
     ip: &str,
     method: &str,
@@ -182,6 +152,7 @@ pub fn server_info(
 }
 
 
+#[allow(unused)]
 fn get_header_value<'a>(
     req: &'a HttpRequest,
     header_name: &str) -> Option<&'a str>
@@ -190,6 +161,7 @@ fn get_header_value<'a>(
 }
 
 
+#[allow(unused)]
 pub fn get_client_ip(req: &HttpRequest) -> String {
     // 优先检查 CF-Connecting-IP (Cloudflare 提供的真实 IP 头)
     if let Some(ip) = get_header_value(&req, "CF-Connecting-IP") {
@@ -218,6 +190,7 @@ pub fn get_client_ip(req: &HttpRequest) -> String {
 }
 
 
+#[allow(unused)]
 pub fn format_header(req: &HttpRequest, output: OnceLock<bool>) {
     // println!("{:?}", output);
     if let Some (flag) = output.get() {
@@ -232,6 +205,7 @@ pub fn format_header(req: &HttpRequest, output: OnceLock<bool>) {
 }
 
 
+#[allow(unused)]
 pub fn get_session_from_header(http_req: &HttpRequest) -> String{
     http_req.headers()
         .iter()
@@ -242,6 +216,7 @@ pub fn get_session_from_header(http_req: &HttpRequest) -> String{
 }
 
 
+#[allow(unused)]
 pub fn get_lan_ip() -> Option<String> {
     get_if_addrs().ok().and_then(|addrs| {
         addrs.into_iter()
@@ -253,6 +228,7 @@ pub fn get_lan_ip() -> Option<String> {
 }
 
 
+#[allow(unused)]
 pub fn format_session_id(session_id: &String) {
     println!(" * Session-ID: {} \n ", session_id);
 }
