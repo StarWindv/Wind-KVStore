@@ -10,5 +10,11 @@ use anyhow::{Result};
 #[actix_web::main]
 async fn main() -> Result<()> {
     output_tile(Option::from(true));
-    run_server().await
+    if let Err(e) = run_server().await {
+        eprintln!("{}", e);
+        eprintln!(" * Server has exited.");
+        std::process::exit(1);
+    }
+    println!(" * Server has stopped.");
+    Ok(())
 }
