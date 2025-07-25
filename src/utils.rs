@@ -1,7 +1,7 @@
 use regex::Regex;
 use anyhow::anyhow;
 use std::env;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpListener, IpAddr};
 use std::sync::OnceLock;
 use actix_web::HttpRequest;
 use chrono::Local;
@@ -231,4 +231,17 @@ pub fn get_lan_ip() -> Option<String> {
 #[allow(unused)]
 pub fn format_session_id(session_id: &String) {
     println!(" * Session-ID: {} \n ", session_id);
+}
+
+
+#[allow(unused)]
+pub fn is_local_port_available(host: String, port: u16) -> bool {
+    let ip: IpAddr = match host.parse() {
+        Ok(ip) => ip,
+        Err(_) => return false,
+    };
+    match TcpListener::bind(SocketAddr::new(ip, port)) {
+        Ok(_) => true,  // 绑定成功说明端口可用
+        Err(_) => false // 绑定失败说明端口被占用或无权访问
+    }
 }
