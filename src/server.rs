@@ -6,7 +6,7 @@ use crate::utils::{
     parse_identifier_set, parse_compact,
     server_info, get_client_ip, format_header,
     get_session_from_header, get_lan_ip,
-    format_session_id
+    format_session_id,  is_local_port_available
 };
 use actix_web::{
     get, post,
@@ -34,7 +34,8 @@ static PRINT_HEADER: OnceLock<bool> = OnceLock::new();
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(short, long)]
+    #[arg(long,
+        help="Output requests headers")]
     header: bool
 }
 
@@ -666,12 +667,21 @@ async fn parse_and_execute(command: &str, store: &mut KVStore) -> Result<String>
 // 启动服务器
 pub async fn run_server() -> Result<()> {
     let args = Args::parse();
-    PRINT_HEADER.set(args.header).expect("全局变量初始化完毕");
+    PRINT_HEADER.set(args.header).expect("Global flag init succeed.");
     // println!("{:?}", PRINT_HEADER);
 
     let config = load_config()?;
 
     let sessions = init_session_manager();
+
+    if !is_local_port_available(config.host.clone(), config.port.clone()) {
+        return Err(anyhow::anyhow!(
+                " * Port `{}` on Host `{}` is already in use.",
+                config.port, config.host
+            )
+        );
+    }
+
 
     println!(" * Starting Wind-KVStore Server...");
     if config.host == "0.0.0.0" {
