@@ -17,7 +17,3 @@ classifiers = [
 ]
 dependencies = []
 urls = { "Homepage" = "https://github.com/StarWindv/Wind-KVStore/tree/main/web_sdk/python" }
-
-
-[tool.setuptools]
-license-files = []
