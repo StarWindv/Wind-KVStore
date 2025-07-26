@@ -15,5 +15,7 @@ requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dependencies = []
+dependencies = [
+    "requests"
+]
 urls = { "Homepage" = "https://github.com/StarWindv/Wind-KVStore/tree/main/web_sdk/python" }
