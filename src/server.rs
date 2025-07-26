@@ -1,44 +1,35 @@
 use crate::config::load_config;
 use crate::kvstore::KVStore;
 use crate::utils::{
-    parse_put_command, parse_get_command,
-    parse_delete_command, parse_identifier_get,
-    parse_identifier_set, parse_compact,
-    server_info, get_client_ip, format_header,
-    get_session_from_header, get_lan_ip,
-    format_session_id,  is_local_port_available
+    format_header, format_session_id, get_client_ip, get_lan_ip, get_session_from_header,
+    is_local_port_available, parse_compact, parse_delete_command, parse_get_command,
+    parse_identifier_get, parse_identifier_set, parse_put_command, server_info,
 };
 use actix_web::{
-    get, post,
+    App, HttpRequest, HttpResponse, HttpServer, Responder, get, post,
     web::{self, Data, Json},
-    App, HttpResponse, HttpServer,
-    Responder, HttpRequest
 };
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
+use clap::Parser;
 use dashmap::DashMap;
 use futures::executor::block_on;
 use log::error;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use tokio::time;
 use uuid::Uuid;
-use std::sync::OnceLock;
-use clap::Parser;
-
 
 static PRINT_HEADER: OnceLock<bool> = OnceLock::new();
-
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(long,
-        help="Output requests headers")]
-    header: bool
+    #[arg(long, help = "Output requests headers")]
+    header: bool,
 }
-
 
 // 会话结构体
 struct Session {
@@ -46,7 +37,6 @@ struct Session {
     last_active: Mutex<Instant>,
     current_path: Mutex<Option<String>>,
 }
-
 
 impl Session {
     fn new() -> Self {
@@ -58,10 +48,8 @@ impl Session {
     }
 }
 
-
 // 会话管理器
 type SessionManager = Arc<DashMap<String, Arc<Session>>>;
-
 
 // API 数据结构
 #[derive(Deserialize)]
@@ -70,19 +58,15 @@ struct KeyValueRequest {
     value: Option<String>,
 }
 
-
-#[derive(Deserialize)]
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 struct PathRequest {
     path: String,
 }
-
 
 #[derive(Deserialize)]
 struct IdentifierRequest {
     identifier: String,
 }
-
 
 #[derive(Serialize)]
 struct KeyValueResponse {
@@ -90,18 +74,15 @@ struct KeyValueResponse {
     value: Option<String>,
 }
 
-
 #[derive(Serialize)]
 struct IdentifierResponse {
     identifier: String,
 }
 
-
 #[derive(Serialize)]
 struct StatusResponse {
     status: String,
 }
-
 
 // 初始化会话管理器
 fn init_session_manager() -> SessionManager {
@@ -109,7 +90,6 @@ fn init_session_manager() -> SessionManager {
     start_session_cleanup(manager.clone());
     manager
 }
-
 
 // 会话清理任务
 fn start_session_cleanup(manager: SessionManager) {
@@ -127,7 +107,6 @@ fn start_session_cleanup(manager: SessionManager) {
         }
     });
 }
-
 
 // 获取或创建会话
 async fn get_or_create_session(
@@ -147,30 +126,28 @@ async fn get_or_create_session(
     (new_id, new_session)
 }
 
-
 // API 处理函数
 #[get("/")]
 async fn index(req: HttpRequest) -> impl Responder {
     server_info(
-                get_client_ip(&req).as_str(),
-                req.method().as_str(),
-                req.path()
-               );
+        get_client_ip(&req).as_str(),
+        req.method().as_str(),
+        req.path(),
+    );
     HttpResponse::Ok().body("Wind-KVStore Server is Running!")
 }
-
 
 #[post("/api/open")]
 async fn open_db(
     sessions: Data<SessionManager>,
     req: Json<PathRequest>,
     session_id: Option<String>,
-    http_req: HttpRequest
+    http_req: HttpRequest,
 ) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
 
     let (session_id, session) = get_or_create_session(sessions, session_id).await;
@@ -200,24 +177,28 @@ async fn open_db(
     }
 }
 
-
 #[get("/api/close")]
-async fn close_db(
-    sessions: Data<SessionManager>,
-    http_req: HttpRequest
-) -> impl Responder {
+async fn close_db(sessions: Data<SessionManager>, http_req: HttpRequest) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
     let session_id = get_session_from_header(&http_req);
     format_session_id(&session_id);
     format_header(&http_req, PRINT_HEADER.clone());
 
-
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     let mut store = session.store.lock().await;
+
+    match store.as_mut() {
+        Some(store) => store,
+        None => {
+            return HttpResponse::BadRequest().json(StatusResponse {
+                status: "No database open".to_string(),
+            });
+        }
+    };
 
     if let Some(kv_store) = store.take() {
         if let Err(e) = kv_store.close() {
@@ -238,17 +219,16 @@ async fn close_db(
         })
 }
 
-
 #[post("/api/put")]
 async fn put_value(
     sessions: Data<SessionManager>,
     req: Json<Vec<KeyValueRequest>>,
-    http_req: HttpRequest
+    http_req: HttpRequest,
 ) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
 
     let session_id = get_session_from_header(&http_req);
@@ -263,7 +243,7 @@ async fn put_value(
         None => {
             return HttpResponse::BadRequest().json(StatusResponse {
                 status: "No database open".to_string(),
-            })
+            });
         }
     };
 
@@ -302,17 +282,16 @@ async fn put_value(
 async fn get_value(
     sessions: Data<SessionManager>,
     query: web::Query<KeyValueRequest>,
-    http_req: HttpRequest
+    http_req: HttpRequest,
 ) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
     let session_id = get_session_from_header(&http_req);
     format_session_id(&session_id);
     format_header(&http_req, PRINT_HEADER.clone());
-
 
     let (session_id, session) = get_or_create_session(sessions, Option::from(session_id)).await;
     let mut store = session.store.lock().await;
@@ -322,7 +301,7 @@ async fn get_value(
         None => {
             return HttpResponse::BadRequest().json(StatusResponse {
                 status: "No database open".to_string(),
-            })
+            });
         }
     };
 
@@ -361,12 +340,12 @@ async fn get_value(
 async fn delete_value(
     sessions: Data<SessionManager>,
     req: Json<KeyValueRequest>,
-    http_req: HttpRequest
+    http_req: HttpRequest,
 ) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
 
     let session_id = get_session_from_header(&http_req);
@@ -382,7 +361,7 @@ async fn delete_value(
         None => {
             return HttpResponse::BadRequest().json(StatusResponse {
                 status: "No database open".to_string(),
-            })
+            });
         }
     };
 
@@ -406,14 +385,11 @@ async fn delete_value(
 
 
 #[get("/api/id/get")]
-async fn get_identifier(
-    sessions: Data<SessionManager>,
-    http_req: HttpRequest
-) -> impl Responder {
+async fn get_identifier(sessions: Data<SessionManager>, http_req: HttpRequest) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
     let session_id = get_session_from_header(&http_req);
     format_session_id(&session_id);
@@ -428,7 +404,7 @@ async fn get_identifier(
         None => {
             return HttpResponse::BadRequest().json(StatusResponse {
                 status: "No database open".to_string(),
-            })
+            });
         }
     };
 
@@ -446,12 +422,12 @@ async fn get_identifier(
 async fn set_identifier(
     sessions: Data<SessionManager>,
     req: Json<IdentifierRequest>,
-    http_req: HttpRequest
+    http_req: HttpRequest,
 ) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
     let session_id = get_session_from_header(&http_req);
     format_session_id(&session_id);
@@ -466,7 +442,7 @@ async fn set_identifier(
         None => {
             return HttpResponse::BadRequest().json(StatusResponse {
                 status: "No database open".to_string(),
-            })
+            });
         }
     };
 
@@ -490,14 +466,11 @@ async fn set_identifier(
 
 
 #[get("/api/current")]
-async fn get_current(
-    sessions: Data<SessionManager>,
-    http_req: HttpRequest
-) -> impl Responder {
+async fn get_current(sessions: Data<SessionManager>, http_req: HttpRequest) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
     let session_id = get_session_from_header(&http_req);
     format_session_id(&session_id);
@@ -507,7 +480,12 @@ async fn get_current(
 
     *session.last_active.lock().await = Instant::now();
 
-    let path = session.current_path.lock().await.clone().unwrap_or_default();  // 修改这里
+    let path = session
+        .current_path
+        .lock()
+        .await
+        .clone()
+        .unwrap_or_default(); // 修改这里
 
     HttpResponse::Ok()
         .insert_header(("X-Session-ID", session_id))
@@ -516,14 +494,11 @@ async fn get_current(
 
 
 #[get("/api/compact")]
-async fn compact_db(
-    sessions: Data<SessionManager>,
-    http_req: HttpRequest
-) -> impl Responder {
+async fn compact_db(sessions: Data<SessionManager>, http_req: HttpRequest) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
 
     let session_id = get_session_from_header(&http_req);
@@ -539,7 +514,7 @@ async fn compact_db(
         None => {
             return HttpResponse::BadRequest().json(StatusResponse {
                 status: "No database open".to_string(),
-            })
+            });
         }
     };
 
@@ -566,12 +541,12 @@ async fn compact_db(
 async fn execute_command(
     sessions: Data<SessionManager>,
     command: String,
-    http_req: HttpRequest
+    http_req: HttpRequest,
 ) -> impl Responder {
     server_info(
         get_client_ip(&http_req).as_str(),
         http_req.method().as_str(),
-        http_req.path()
+        http_req.path(),
     );
 
     let session_id = get_session_from_header(&http_req);
@@ -587,7 +562,7 @@ async fn execute_command(
         None => {
             return HttpResponse::BadRequest().json(StatusResponse {
                 status: "No database open".to_string(),
-            })
+            });
         }
     };
 
@@ -598,9 +573,14 @@ async fn execute_command(
             continue;
         }
         // println!("cmd: {}", cmd);
-        arr.push(format!("\"{}: {}{}\"", cmd, parse_and_execute(cmd, kv_store)
-            .await
-            .unwrap_or_else(|e| format!("Error: {}", e)), ";"));
+        arr.push(format!(
+            "\"{}: {}{}\"",
+            cmd,
+            parse_and_execute(cmd, kv_store)
+                .await
+                .unwrap_or_else(|e| format!("Error: {}", e)),
+            ";"
+        ));
     }
     *session.last_active.lock().await = Instant::now();
 
@@ -609,11 +589,8 @@ async fn execute_command(
 
     HttpResponse::Ok()
         .insert_header(("X-Session-ID", session_id))
-        .json(StatusResponse {
-            status: result,
-        })
+        .json(StatusResponse { status: result })
 }
-
 
 // 命令解析和执行
 async fn parse_and_execute(command: &str, store: &mut KVStore) -> Result<String> {
@@ -663,11 +640,12 @@ async fn parse_and_execute(command: &str, store: &mut KVStore) -> Result<String>
     Err(anyhow!("Unknown command"))
 }
 
-
 // 启动服务器
 pub async fn run_server() -> Result<()> {
     let args = Args::parse();
-    PRINT_HEADER.set(args.header).expect("Global flag init succeed.");
+    PRINT_HEADER
+        .set(args.header)
+        .expect("Global flag init succeed.");
     // println!("{:?}", PRINT_HEADER);
 
     let config = load_config()?;
@@ -676,17 +654,20 @@ pub async fn run_server() -> Result<()> {
 
     if !is_local_port_available(config.host.clone(), config.port.clone()) {
         return Err(anyhow::anyhow!(
-                " * Port `{}` on Host `{}` is already in use.",
-                config.port, config.host
-            )
-        );
+            " * Port `{}` on Host `{}` is already in use.",
+            config.port,
+            config.host
+        ));
     }
-
 
     println!(" * Starting Wind-KVStore Server...");
     if config.host == "0.0.0.0" {
         println!(" * Server start on: http://{}:{}", "127.0.0.1", config.port);
-        println!(" * Server start on: http://{}:{}", get_lan_ip().unwrap().to_string(), config.port);
+        println!(
+            " * Server start on: http://{}:{}",
+            get_lan_ip().unwrap().to_string(),
+            config.port
+        );
     } else {
         println!(" * Server start on: http://{}:{}", config.host, config.port);
     }
@@ -705,9 +686,9 @@ pub async fn run_server() -> Result<()> {
             .service(compact_db)
             .service(execute_command)
     })
-        .bind((config.host.as_str(), config.port))?
-        .run()
-        .await?;
+    .bind((config.host.as_str(), config.port))?
+    .run()
+    .await?;
 
     Ok(())
 }
