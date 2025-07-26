@@ -18,4 +18,4 @@ classifiers = [
 dependencies = [
     "requests"
 ]
-urls = { "Homepage" = "https://github.com/StarWindv/Wind-KVStore/tree/main/web_sdk/python" }
+urls = { "Homepage" = "https://github.com/StarWindv/Wind-KVStore/tree/main/sdk/python" }
