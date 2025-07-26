@@ -132,17 +132,20 @@ impl KVStore {
 .
 ├── build.rs            # 构建脚本（记录编译时间）
 ├── Cargo.toml          # 项目配置和依赖管理
-├── README.md           # 项目介绍文档
-├── README_CN.md        # 项目介绍中文文档
-├── doc/                # 项目的其他文档
-└── src/
-    ├── config.rs       # 服务器配置获取器
-    ├── kvstore.rs      # 键值存储引擎核心实现
+├── doc/                # 其他文档（中英文）
+├── README.md           # 项目文档（英文）
+├── README_CN.md        # 项目文档（中文）
+├── sdk
+│   ├── python/         # Wind-KVStore服务器的Python SDK
+│   └── test/           # SDK测试
+└── src
+    ├── config.rs       # 服务器配置加载器
+    ├── kvstore.rs      # 核心KV存储引擎实现
     ├── server.rs       # 服务器主逻辑
     ├── server_main.rs  # 服务器入口点
-    ├── shell.rs        # 交互shell主逻辑
-    ├── shell_main.rs   # 交互shell入口点
-    └── utils.rs        # 辅助函数
+    ├── shell.rs        # 交互式shell主逻辑
+    ├── shell_main.rs   # 交互式shell入口点
+    └── utils.rs        # 工具函数
 ```
 
 ## ⚙️ 技术实现
