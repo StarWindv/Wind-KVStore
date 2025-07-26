@@ -129,13 +129,15 @@ impl KVStore {
 ## 🏗️ Project Structure
 
 ```plaintext
-.
 ├── build.rs            # Build script (records compilation time)
 ├── Cargo.toml          # Project configuration and dependency management
+├── doc/                # Another documentation(Chinese and English)
 ├── README.md           # Project documentation (English)
 ├── README_CN.md        # Project documentation (Chinese)
-├── doc/                # Another project documentation(Chinese and English)
-└── src/
+├── sdk
+│   ├── python/         # Wind-KVStore server's sdk for python
+│   └── test/           # Test sdk
+└── src
     ├── config.rs       # Server configuration loader
     ├── kvstore.rs      # Core KV storage engine implementation
     ├── server.rs       # Server main logic
