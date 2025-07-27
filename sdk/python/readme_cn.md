@@ -57,7 +57,7 @@ with WindKVStore(kv_path="mydata.kv") as kv:
 ## 完整示例
 
 ```python
-from wind_kvstore.web import WindKVStore
+from wind_kvstore.client import WindKVStore
 
 # 创建连接（使用上下文管理器自动关闭）
 with WindKVStore(host="127.0.0.1", port=14514, kv_path="userdata.kv") as kv:
