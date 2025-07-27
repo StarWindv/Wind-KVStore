@@ -342,7 +342,7 @@ class WindKVStore(_WindKVStoreBase):
             def wrapper(self, *args, **kwargs):
                 if self.check_active:
                     if self.use_time_to_check_active:
-                        if time.time() - self.session_start > 1800:
+                        if time.time() - float(self.session_start) > 1800:
                             self.open(self.kv_path)
                             # print("pass")
                     elif not self.is_activate():
