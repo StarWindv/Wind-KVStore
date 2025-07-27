@@ -4,7 +4,7 @@
 # """
 
 
-from wind_kvstore.web import WindKVStore
+from wind_kvstore.client import WindKVStore
 import time
 
 class TestWindKVStore:
