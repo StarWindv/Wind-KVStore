@@ -1,0 +1,1 @@
+include src/wind_kvstore/wind_kvcore.pyd
