@@ -317,13 +317,6 @@ class WindKVStore(_WindKVStoreBase):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-        # print("closed")
-        if exc_type:
-            print(f"[exc_type]: {repr(exc_type)}")
-            print(f"[exc_val ]: {repr(exc_val)}")
-            print(f"[exc_tb  ]: {repr(exc_tb)}")
-            return False
-        return None
 
     def __init__(
             self,
