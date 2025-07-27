@@ -24,7 +24,7 @@ with WindKVStore(kv_path="mydata.kv") as kv:
     print(kv.get_value("username"))  # 输出: alice
     
     # 执行批量命令
-    result = kv.execute('PUT "email": "alice@example.com"; GET "email"')
+    result = kv.execute('PUT "email": "alice@example.com"; GET WHERE KEY="email"')
     print(result)
 ```
 
