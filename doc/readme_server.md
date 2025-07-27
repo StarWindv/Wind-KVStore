@@ -116,6 +116,7 @@ requests.post("http://localhost:14514/api/execute",
              headers={"X-Session-ID": session_id},
              data='PUT "lang":"python";')
 ```
+[We also provide an easier-to-use SDK for your convenience.](https://github.com/StarWindv/Wind-KVStore/tree/main/sdk/python)
 
 ### JavaScript
 ```javascript
