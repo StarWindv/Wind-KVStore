@@ -119,8 +119,7 @@ class _WindKVStoreBase(_ConnectKV):
         super().__init__(host, port)
         self.session_id = ""
         self.kv_path = kv_path
-        if self.kv_path:
-            self._open(self, self.kv_path)
+
         self.session_start = 0.0
         self.protocol = "https" if use_https else "http"
         self.check_active = check_active
@@ -132,8 +131,10 @@ class _WindKVStoreBase(_ConnectKV):
         It is recommended to use the general method.
         """)
 
-    @classmethod
-    def _open(cls, self, path) -> bool:
+        if self.kv_path:
+            self._open(self.kv_path)
+
+    def _open(self, path) -> bool:
         """
         method: POST
         :param path: The database path which you want to use.
@@ -146,7 +147,8 @@ class _WindKVStoreBase(_ConnectKV):
         headers = {
             "Content-Type": "application/json"
         }
-        url = f"{self.protocol}://{self.host}:{self.port}{cls._KV_ROUTES["OPEN"]}"
+        # print(self.protocol)
+        url = f"{self.protocol}://{self.host}:{self.port}{self._KV_ROUTES["OPEN"]}"
         response = requests.post(url, json=data, headers=headers)
         for key, value in response.headers.items():
             if key.lower() == "x-session-id":
@@ -362,7 +364,7 @@ class WindKVStore(_WindKVStoreBase):
                 f"The arg `path` can not be empty. "
             )
         self.kv_path = path
-        return self._open(self, path)
+        return self._open(path)
 
     def close(self) -> bool:
         if "open" in self._close(self).get("status"):
