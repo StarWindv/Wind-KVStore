@@ -1,6 +1,6 @@
 # Wind-KVStore Python SDK
 
-此SDK提供了与Wind-KVStore服务器交互的Python客户端，支持键值存储操作、数据库管理和批量命令执行。
+此SDK提供了与Wind-KVStore服务器交互的Python客户端，并打包了KVStore的核心[作为链接库](https://github.com/StarWindv/Wind-KVStore/blob/main/sdk/python/src/wind_kvstore/wind_kvcore.pyi)，支持键值存储操作、数据库管理和批量命令执行。
 
 ## 安装
 
@@ -11,7 +11,7 @@ pip install git+https://github.com/StarWindv/Wind-KVStore.git@main#subdirectory=
 ## 快速开始
 
 ```python
-from wind_kvstore.web import WindKVStore
+from wind_kvstore.client import WindKVStore
 
 # 连接到本地服务器并打开数据库
 with WindKVStore(kv_path="mydata.kv") as kv:
