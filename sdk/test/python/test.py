@@ -1,3 +1,9 @@
+# """
+# If you want to run this test multiple times, 
+# I suggest you delete the existing kv and wal files used.
+# """
+
+
 from wind_kvstore.web import WindKVStore
 import time
 
