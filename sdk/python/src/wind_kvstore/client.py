@@ -431,7 +431,7 @@ class WindKVStore(_WindKVStoreBase):
             raise ValueError(
                 f"The function's param `path` can not be empty."
             )
-        if not isinstance(path, int):
+        if not isinstance(path, str):
             raise TypeError(
                 f"The function's param `path` must be `str`.(with type: {type(path)})"
             )
