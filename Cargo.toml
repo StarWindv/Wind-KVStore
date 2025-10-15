@@ -31,9 +31,9 @@ clap = { version = "4.5.41", features = ["derive"] }
 chrono = "0.4.41"
 
 [[bin]]
-name = "shell"
+name = "wkshell"
 path = "src/shell_main.rs"
 
 [[bin]]
-name = "server"
+name = "wkserver"
 path = "src/server_main.rs"

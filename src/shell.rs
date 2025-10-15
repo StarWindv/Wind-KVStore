@@ -1,11 +1,6 @@
 // src/shell.rs
 use crate::kvstore::KVStore;
-use crate::utils::{
-    parse_put_command, parse_get_command,
-    parse_delete_command, parse_identifier_get,
-    parse_identifier_set, parse_compact,
-    output_tile
-};
+use crate::utils::{parse_put_command, parse_get_command, parse_delete_command, parse_identifier_get, parse_identifier_set, parse_compact, output_tile, ParsedGetCommand};
 use anyhow::{anyhow, Result};
 use linefeed::{Interface, ReadResult};
 use std::path::Path;
@@ -156,11 +151,19 @@ impl Shell {
         if let Ok(cmd) = parse_put_command(command) {
             return self.handle_put_command(cmd);
         }
-        
-        if let Ok(key) = parse_get_command(command) {
-            return self.handle_get_command(key);
+
+        match parse_get_command(command) {
+            Ok(ParsedGetCommand::All) => {
+                return self.handle_get_all_command();
+            }
+            Ok(ParsedGetCommand::Key(key)) => {
+                return self.handle_get_command(key);
+            }
+            Err(msg) => {
+                println!("{}", msg);
+            } // continue another line.
         }
-        
+
         if let Ok(key) = parse_delete_command(command) {
             return self.handle_delete_command(key);
         }
@@ -267,9 +270,11 @@ impl Shell {
 
     fn handle_get_command(&mut self, key: String) -> Result<String> {
         let store = self.store.as_mut().ok_or(anyhow!("No database open"))?;
-        
+        // 核心逻辑：如果 key 是 "*"（没有引号），则获取所有键值对
+        // 如果 key 是 "*"（有引号），则查找键为 "*" 的特定键值对
+        // 这个区分已经在命令解析阶段完成，所以咱直接使用结果就ok.
+
         if let Some(value) = store.get(key.as_bytes())? {
-            // 尝试转换为字符串，失败则显示十六进制
             match String::from_utf8(value.clone()) {
                 Ok(s) => Ok(s),
                 Err(_) => {
@@ -283,6 +288,36 @@ impl Shell {
         } else {
             Ok("Key not found".to_string())
         }
+    }
+
+
+    fn handle_get_all_command(&mut self) -> Result<String> {
+        let store = self.store.as_mut().ok_or(anyhow!("No database open"))?;
+
+        let all_data = store.get_all()?;
+        if all_data.is_empty() {
+            return Ok("No data found".to_string());
+        }
+
+        let mut output = String::new();
+        output.push_str(&format!("Found {} key-value pairs:\n", all_data.len()));
+
+        for (k, v) in all_data {
+            let key_str = String::from_utf8_lossy(&k);
+            let value_str = match String::from_utf8(v.clone()) {
+                Ok(s) => s,
+                Err(_) => {
+                    let hex_str = v.iter()
+                        .map(|b| format!("{:02X}", b))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    format!("<BINARY DATA: {}>", hex_str)
+                }
+            };
+            output.push_str(&format!("\"{}\": \"{}\"\n", key_str, value_str));
+        }
+
+        Ok(output)
     }
 
 

@@ -1,10 +1,6 @@
 use crate::config::load_config;
 use crate::kvstore::KVStore;
-use crate::utils::{
-    format_header, format_session_id, get_client_ip, get_lan_ip, get_session_from_header,
-    is_local_port_available, parse_compact, parse_delete_command, parse_get_command,
-    parse_identifier_get, parse_identifier_set, parse_put_command, server_info,
-};
+use crate::utils::{format_header, format_session_id, get_client_ip, get_lan_ip, get_session_from_header, is_local_port_available, parse_compact, parse_delete_command, parse_get_command, parse_identifier_get, parse_identifier_set, parse_put_command, server_info, ParsedGetCommand};
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder, get, post,
     web::{self, Data, Json},
@@ -607,12 +603,13 @@ async fn parse_and_execute(command: &str, store: &mut KVStore) -> Result<String>
     }
 
     // 解析GET命令
-    if let Ok(key) = parse_get_command(command) {
+    if let Ok(ParsedGetCommand::Key(key)) = parse_get_command(command) {
         if let Some(value) = store.get(key.as_bytes())? {
             return Ok(String::from_utf8(value).unwrap_or_else(|_| "<BINARY>".to_string()));
         }
         return Ok("Key not found".to_string());
     }
+
 
     // 解析DELETE命令
     if let Ok(key) = parse_delete_command(command) {

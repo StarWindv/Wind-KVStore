@@ -8,6 +8,13 @@ use chrono::Local;
 use if_addrs::get_if_addrs;
 
 
+#[derive(Debug)]
+pub enum ParsedGetCommand {
+    All,        // GET WHERE KEY=*; (获取所有键值对)
+    Key(String), // GET WHERE KEY="specific_key"; (获取特定键)
+}
+
+
 pub fn output_tile(is_server: Option<bool>) {
     let is_server = is_server.unwrap_or(false);
     let version: &str = env!("CARGO_PKG_VERSION");
@@ -72,16 +79,24 @@ pub fn parse_put_command(command: &str) -> anyhow::Result<Vec<(String, String)>>
 }
 
 
-pub fn parse_get_command(command: &str) -> anyhow::Result<String> {
-    let re = Regex::new(r#"GET\s+WHERE\s+KEY\s*=\s*"([^"]+)"\s*$"#)?;
+pub fn parse_get_command(command: &str) -> anyhow::Result<ParsedGetCommand> {
+    let command = command.trim();
 
-    if let Some(caps) = re.captures(command) {
-        if let Some(key) = caps.get(1) {
-            return Ok(key.as_str().to_string());
+    // 匹配 GET WHERE KEY=*; （没有引号的星号）
+    let star_pattern = Regex::new(r"(?i)^GET\s+WHERE\s+KEY\s*=\s*\*\s*$")?;
+    if star_pattern.is_match(command) {
+        return Ok(ParsedGetCommand::All);
+    }
+
+    // 匹配 GET WHERE KEY="*"; （有引号的星号）
+    let quoted_pattern = Regex::new(r#"(?i)^GET\s+WHERE\s+KEY\s*=\s*"([^"]+)"\s*$"#)?;
+    if let Some(caps) = quoted_pattern.captures(command) {
+        if let Some(key_match) = caps.get(1) {
+            return Ok(ParsedGetCommand::Key(key_match.as_str().to_string()));
         }
     }
 
-    Err(anyhow!("Invalid GET command format"))
+    Err(anyhow!("Invalid GET command: {}", command))
 }
 
 

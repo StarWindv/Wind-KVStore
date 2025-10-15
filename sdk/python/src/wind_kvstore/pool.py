@@ -4,13 +4,11 @@ from typing import List
 
 import requests
 
-from .utils import (
-    format_exec_response,
-    format_exec_put_command,
-    remind
-)
-
 from ._base import ConnectKV
+
+from .utils import (format_exec_response,
+                    format_exec_put_command,
+                    remind)
 
 
 class _WindKVStoreBase(ConnectKV):
@@ -34,6 +32,8 @@ class _WindKVStoreBase(ConnectKV):
         self.session_start = 0.0
         self.protocol = "https" if use_https else "http"
 
+        self.pool = requests.Session()
+
 
         if self.kv_path:
             self._open(self, self.kv_path)
@@ -52,9 +52,11 @@ class _WindKVStoreBase(ConnectKV):
         headers = {
             "Content-Type": "application/json"
         }
+        if self.pool is None:
+            self.pool = requests.Session()
         # print(self.protocol)
         url = f"{self.protocol}://{self.host}:{self.port}{cls._KV_ROUTES["OPEN"]}"
-        response = requests.post(url, json=data, headers=headers)
+        response = self.pool.post(url, json=data, headers=headers, timeout = 3)
         for key, value in response.headers.items():
             if key.lower() == "x-session-id":
                 self.session_id = value
@@ -75,7 +77,9 @@ class _WindKVStoreBase(ConnectKV):
             "X-Session-ID": self.session_id
         }
         url = f"{self.protocol}://{self.host}:{self.port}{cls._KV_ROUTES["CLOSE"]}"
-        response = requests.get(url, headers=headers)
+        response = self.pool.get(url, headers=headers, timeout = 3)
+        self.pool.close()
+        self.pool = None
         return response.json()
 
     @classmethod
@@ -92,7 +96,7 @@ class _WindKVStoreBase(ConnectKV):
             "X-Session-ID": self.session_id
         }
         url = f"{self.protocol}://{self.host}:{self.port}{cls._KV_ROUTES["CURRENT"]}"
-        response = requests.get(url, headers=headers).json()
+        response = self.pool.get(url, headers=headers, timeout = 3).json()
         return response.get("path", None)
 
     @classmethod
@@ -106,7 +110,7 @@ class _WindKVStoreBase(ConnectKV):
             "X-Session-ID": self.session_id
         }
         url = f"{self.protocol}://{self.host}:{self.port}{self._DATA_ROUTES["GET"]}?key={key}"
-        response = requests.get(url, headers=headers)
+        response = self.pool.get(url, headers=headers, timeout = 3)
         return response.json()
 
     @classmethod
@@ -124,7 +128,7 @@ class _WindKVStoreBase(ConnectKV):
             "X-Session-ID": self.session_id
         }
         url = f"{self.protocol}://{self.host}:{self.port}{cls._DATA_ROUTES["PUT"]}"
-        response = requests.post(url, data=data, headers=headers)
+        response = self.pool.post(url, data=data, headers=headers, timeout = 3)
         # print(response.text)
         return response.json()
 
@@ -143,7 +147,7 @@ class _WindKVStoreBase(ConnectKV):
             "key": key
         }
         url = f"{self.protocol}://{self.host}:{self.port}{self._DATA_ROUTES["DEL"]}"
-        response = requests.post(url, headers=headers, json=data)
+        response = self.pool.post(url, headers=headers, json=data, timeout = 3)
         # print(response.text)
         return response.json()
 
@@ -157,7 +161,7 @@ class _WindKVStoreBase(ConnectKV):
             "X-Session-ID": self.session_id
         }
         url = f"{self.protocol}://{self.host}:{self.port}{self._MANAGEMENT_ROUTES["COMPACT"]}"
-        response = requests.get(url, headers=headers)
+        response = self.pool.get(url, headers=headers, timeout = 3)
         return response.json()
 
     @classmethod
@@ -170,7 +174,7 @@ class _WindKVStoreBase(ConnectKV):
             "X-Session-ID": self.session_id
         }
         url = f"{self.protocol}://{self.host}:{self.port}{self._ID_ROUTES["GET_ID"]}"
-        response = requests.get(url, headers=headers)
+        response = self.pool.get(url, headers=headers, timeout = 3)
         return response.json()
 
     @classmethod
@@ -188,7 +192,7 @@ class _WindKVStoreBase(ConnectKV):
             "identifier": identifier
         }
         url = f"{self.protocol}://{self.host}:{self.port}{self._ID_ROUTES["SET_ID"]}"
-        response = requests.post(url, headers=headers, json=data)
+        response = self.pool.post(url, headers=headers, json=data, timeout = 3)
         return response.json()
 
     @classmethod
@@ -211,7 +215,7 @@ class _WindKVStoreBase(ConnectKV):
         }
         data = format_exec_put_command(command) # Important!
         url = f"{self.protocol}://{self.host}:{self.port}{self._EXEC_ROUTES["EXECUTE"]}"
-        response = requests.post(url, headers=headers, data=data)
+        response = self.pool.post(url, headers=headers, data=data, timeout = 3)
         return response.text
 
 
@@ -221,13 +225,6 @@ class WindKVStore(_WindKVStoreBase):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-        # print("closed")
-        if exc_type:
-            print(f"[exc_type]: {repr(exc_type)}")
-            print(f"[exc_val ]: {repr(exc_val)}")
-            print(f"[exc_tb  ]: {repr(exc_tb)}")
-            return False
-        return None
 
     def __init__(
             self,

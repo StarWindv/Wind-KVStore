@@ -1,11 +1,16 @@
 # """
-# If you want to run this test multiple times, 
-# I suggest you delete the existing kv and wal files used.
+# If you want to run this test multiple times,
+# and need the `pass` result,
+# you should delete the existing kv and wal files used.
 # """
 
 
-from wind_kvstore.client import WindKVStore
+# from wind_kvstore.pool import WindKVStore
+# from wind_kvstore.client import WindKVStore
+from wind_kvstore.auto import auto
 import time
+
+WindKVStore = auto("pool")
 
 class TestWindKVStore:
     def test_basic_operations(self):
@@ -130,7 +135,7 @@ class TestWindKVStore:
 
             # 模拟长时间不操作（超过30分钟）
             print("\n[INFO] Simulate 30 minutes of inactivity")
-            kv.session_start = time.time() - 1801
+            kv.session_start = time.time() + 1801
 
             # 尝试操作，应该自动重新连接
             print("[INFO] Try operation after inactivity")
