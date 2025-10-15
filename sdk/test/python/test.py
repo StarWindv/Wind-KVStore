@@ -10,6 +10,7 @@
 from wind_kvstore.auto import auto
 import time
 
+
 WindKVStore = auto("pool")
 
 class TestWindKVStore:

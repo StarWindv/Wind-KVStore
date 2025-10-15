@@ -1,4 +1,8 @@
 .idea
 target
-test.wind
+test*.*
 Cargo.lock
+*build*
+*.bak*
+*.egg-info
+*__pycache__

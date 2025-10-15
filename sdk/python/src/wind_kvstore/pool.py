@@ -6,9 +6,9 @@ import requests
 
 from ._base import ConnectKV
 
-from .utils import (format_exec_response,
-                    format_exec_put_command,
-                    remind)
+from ._utils import (format_exec_response,
+                     format_exec_put_command,
+                     remind)
 
 
 class _WindKVStoreBase(ConnectKV):

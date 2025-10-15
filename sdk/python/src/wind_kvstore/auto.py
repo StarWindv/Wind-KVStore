@@ -1,4 +1,4 @@
-from .utils import remind
+from ._utils import remind
 import importlib
 
 

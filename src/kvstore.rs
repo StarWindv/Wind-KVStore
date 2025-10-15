@@ -511,72 +511,15 @@ impl KVStore {
         self.insert_to_page(new_page, key, value, update_index)?;
         Ok(())
     }
-
-
-    /*
-    pub fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        let page_num = match self.key_to_page.get(key) {
-            Some(num) => *num,
-            None => return Ok(None),
-        };
-
-        let page_data = self.read_page(page_num)?;
-        let header = PageHeader::unpack(&page_data)?;
-        let data_start = PageHeader::SIZE;
-        let data_end = data_start + header.data_len as usize;
-        let data = &page_data[data_start..data_end];
-
-        let mut pos = 0;
-        for _ in 0..header.kv_count {
-            if pos >= data.len() {
-                break;
-            }
-
-            let klen = data[pos] as usize;
-            pos += 1;
-
-            if pos + klen > data.len() {
-                break;
-            }
-            let current_key = &data[pos..pos + klen];
-            pos += klen;
-
-            if pos + 2 > data.len() {
-                break;
-            }
-            let vlen = u16::from_le_bytes([data[pos], data[pos + 1]]) as usize;
-            pos += 2;
-
-            if pos + vlen > data.len() {
-                break;
-            }
-
-            if current_key == key {
-                let mut value = data[pos..pos + vlen].to_vec();
-
-                // 处理溢出
-                if header.flags & 0x02 != 0 {
-                    let overflow_data = self.read_overflow(header.next_page)?;
-                    value.extend_from_slice(&overflow_data);
-                }
-
-                return Ok(Some(value));
-            }
-
-            pos += vlen;
-        }
-
-        Ok(None)
-    }*/
+    
+    
     // 修改 KVStore 的 get 方法，支持特殊语义
     pub fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        // 特殊处理：空字节数组表示获取所有键值对
-        // 这是内部使用的，不会与用户数据冲突
+
         if key.is_empty() {
             return Err(anyhow!("Empty key is reserved for internal use"));
         }
 
-        // 原有的单键查询逻辑
         let page_num = match self.key_to_page.get(key) {
             Some(num) => *num,
             None => return Ok(None),
@@ -633,6 +576,7 @@ impl KVStore {
 
 
     // 获取所有键值对
+    #[allow(dead_code)]
     pub fn get_all(&mut self) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
         let mut result = Vec::new();
 
@@ -1309,7 +1253,7 @@ fn current_time_millis() -> u64 {
         .unwrap()
         .as_millis() as u64;
     /**
-    * test timestamp's get
+    * test timestamp
     */
     // println!("[TIME] {}", data);
     data

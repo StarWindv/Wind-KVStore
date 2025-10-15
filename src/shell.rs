@@ -1,6 +1,15 @@
 // src/shell.rs
 use crate::kvstore::KVStore;
-use crate::utils::{parse_put_command, parse_get_command, parse_delete_command, parse_identifier_get, parse_identifier_set, parse_compact, output_tile, ParsedGetCommand};
+use crate::utils::{
+    parse_put_command,
+    parse_get_command,
+    parse_delete_command,
+    parse_identifier_get,
+    parse_identifier_set,
+    parse_compact,
+    output_tile,
+    ParsedGetCommand
+};
 use anyhow::{anyhow, Result};
 use linefeed::{Interface, ReadResult};
 use std::path::Path;
@@ -295,6 +304,7 @@ impl Shell {
         let store = self.store.as_mut().ok_or(anyhow!("No database open"))?;
 
         let all_data = store.get_all()?;
+        // println!("{:?}", all_data);
         if all_data.is_empty() {
             return Ok("No data found".to_string());
         }
