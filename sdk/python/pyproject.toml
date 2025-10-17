@@ -36,7 +36,7 @@ classifiers = [
 
 [tool.setuptools.package-data]
 
-"wind_kvstore" = ["src/wind_kvstore/wind_kvcore.pyd"]
+"wind_kvstore" = ["src/wind_kvstore/_wind_kvcore.pyd", "src/wind_kvstore/_wind_kvcore.so"]
 
 [tool.maturin]
 

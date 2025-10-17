@@ -122,7 +122,7 @@ class WindKVCore:
             PyValueError: 当数据库已关闭时抛出
                           Raised when database is already closed
         """
-        return self.__inner._set_identifier(identifier)
+        return self.__inner.set_identifier(identifier)
 
     @check_open_status()
     def compact(self) -> None:
