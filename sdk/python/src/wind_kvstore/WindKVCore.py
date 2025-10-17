@@ -1,3 +1,14 @@
+"""
+Class `WindKVCore` encapsulated `wind_kvstore engine`'s ABI.
+
+Usage:
+``` Python
+from wind_kvstore.WindKVCore import WindKVCore
+```
+
+"""
+
+
 from typing import Optional, Union, List, Dict
 
 from ._wind_kvcore import _WindKVCore
@@ -60,7 +71,9 @@ class WindKVCore:
                     ]
                 ]
             ]:
-        return self.__inner.get_all()
+        _data = self.__inner.get_all()
+        return [{"key": k, "value": v} for d in _data for k, v in d.items()]
+
 
     @check_open_status()
     def put(
@@ -109,7 +122,7 @@ class WindKVCore:
             PyValueError: 当数据库已关闭时抛出
                           Raised when database is already closed
         """
-        return self.__inner.set_identifier(identifier)
+        return self.__inner._set_identifier(identifier)
 
     @check_open_status()
     def compact(self) -> None:

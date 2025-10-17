@@ -6,26 +6,28 @@ build-backend = "setuptools.build_meta"
 
 [project]
 
-name = "wind_kvstore"
+name = "wind_kvstore_GUI"
 
-version = "0.0.2"
+version = "0.0.1"
 
 authors = [
     { name = "星灿长风v(StarWindv)", email = "starwindv.stv@gmail.com"}
 ]
 
-description = "Wind KVStore Server SDK, and Wind KVStore's ABI in Python"
+description = "Wind KVStore GUI"
 
 readme = "README.md"
 
-license = { text = "MIT" }
+license = { text = "GPLv3" }
 
 requires-python = ">=3.10"
 
 dependencies = [
-    "requests"
+    "wind_kvstore",
+    "PyQt5",
+    "stv_utils"
 ]
-urls = { "Homepage" = "https://github.com/StarWindv/Wind-KVStore/tree/main/web_sdk/python" }
+urls = { "Homepage" = "https://github.com/StarWindv/Wind-KVStore/tree/main/GUI" }
 
 classifiers = [
     "Programming Language :: Rust",
@@ -34,10 +36,5 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
-[tool.setuptools.package-data]
-
-"wind_kvstore" = ["src/wind_kvstore/wind_kvcore.pyd"]
-
-[tool.maturin]
-
-features = ["pyo3/extension-module"]
+[project.scripts]
+wkgui = "wind_kvstore_GUI.GUI:main"

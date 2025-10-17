@@ -513,7 +513,6 @@ impl KVStore {
     }
     
     
-    // 修改 KVStore 的 get 方法，支持特殊语义
     pub fn get(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>> {
 
         if key.is_empty() {
@@ -652,7 +651,6 @@ impl KVStore {
         self.delete_internal(key, true)
     }
 
-
     fn delete_internal(&mut self, key: &[u8], update_index: bool) -> Result<()> {
         let page_num = match self.key_to_page.get(key) {
             Some(num) => *num,
@@ -667,9 +665,15 @@ impl KVStore {
 
         let mut pos = 0;
         let mut found = false;
-        let mut kv_start = 0;
+        let mut kv_ranges = Vec::new();
+
         for i in 0..header.kv_count {
-            kv_start = pos;
+            let start_pos = pos;
+
+            if pos >= data.len() {
+                break;
+            }
+
             let klen = data[pos] as usize;
             pos += 1;
 
@@ -689,43 +693,43 @@ impl KVStore {
                 break;
             }
 
-            if current_key == key {
+            let end_pos = pos + vlen;
+
+            if current_key != key {
+                kv_ranges.push((start_pos, end_pos));
+            } else {
                 found = true;
-                // 如果是第一个键且有溢出，释放溢出页
                 if i == 0 && header.flags & 0x02 != 0 {
                     self.free_overflow(header.next_page)?;
                     header.flags &= !0x02;
                     header.next_page = 0;
                 }
-                break;
             }
 
-            pos += vlen;
+            pos = end_pos;
         }
 
         if !found {
             return Ok(());
         }
 
-        let kv_end = pos;
-        let before = &data[..kv_start];
-        let after = &data[kv_end..];
-        let new_data = [before, after].concat();
+        let mut new_data = Vec::new();
+        for (start, end) in &kv_ranges {
+            new_data.extend_from_slice(&data[*start..*end]);
+        }
 
-        header.kv_count -= 1;
+        header.kv_count = kv_ranges.len() as u16;
         header.data_len = new_data.len() as u16;
 
         if update_index {
-            self.key_to_page.remove(key);
+            self.build_index()?;
         }
 
-        // 如果页空了，释放它
         if header.kv_count == 0 {
             self.free_page(page_num)?;
             return Ok(());
         }
 
-        // 更新页数据
         let mut new_page_data = header.pack().to_vec();
         new_page_data.extend_from_slice(&new_data);
         new_page_data.resize(PAGE_SIZE, 0);
@@ -743,7 +747,6 @@ impl KVStore {
             WALManager::new(&temp_path),
         )?;
 
-        // 扫描所有键
         for page_num in 1..=self.header.total_pages {
             if self.check_free_page(page_num)? {
                 continue;
@@ -783,10 +786,8 @@ impl KVStore {
                 pos += vlen;
 
                 if let Ok(Some(existing)) = temp_db.get(key) {
-                    // 如果键已存在，更新它
                     temp_db.put(key, &existing)?;
                 } else {
-                    // 否则插入新键
                     temp_db.put(key, value)?;
                 }
             }
@@ -800,7 +801,6 @@ impl KVStore {
         // 替换文件
         std::fs::rename(&temp_path, &self.path)?;
 
-        // 重新打开数据库
         *self = KVStore::open_existing_db(
             &self.path,
             Some(&self.header.db_identifier),
@@ -1236,11 +1236,18 @@ impl KVStore {
     }
 
 
-    pub fn close(mut self) -> Result<()> {
+    pub fn commit(&mut self) -> Result<()> {
         self.flush_pages()?;
         self.update_header()?;
         self.mmap.flush()?;
         self.file.sync_all()?;
+        self.page_cache.clear();
+        Ok(())
+    }
+
+
+    pub fn close(mut self) -> Result<()> {
+        self.commit()?;
         Ok(())
     }
 }

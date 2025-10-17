@@ -6,3 +6,6 @@ Cargo.lock
 *.bak*
 *.egg-info
 *__pycache__
+*.kv
+*.wind
+*.wal

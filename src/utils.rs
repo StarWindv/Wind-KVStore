@@ -47,7 +47,7 @@ pub fn output_tile(is_server: Option<bool>) {
 
 
 pub fn parse_put_command(command: &str) -> anyhow::Result<Vec<(String, String)>> {
-    let re = Regex::new(r#"PUT\s+"([^"]+)":"([^"]+)"(?:\s*,\s*"([^"]+)":"([^"]+)")*\s*$"#)?;
+    let re = Regex::new(r#"(?i)PUT\s+"([^"]+)"\s*:\s*"([^"]+)"(?:\s*,\s*"([^"]+)"\s*:\s*"([^"]+)")*\s*$"#)?;
 
     if let Some(caps) = re.captures(command) {
         let mut kvs = Vec::new();
@@ -101,7 +101,7 @@ pub fn parse_get_command(command: &str) -> anyhow::Result<ParsedGetCommand> {
 
 
 pub fn parse_delete_command(command: &str) -> anyhow::Result<String> {
-    let re = Regex::new(r#"DEL\s+WHERE\s+KEY\s*=\s*"([^"]+)"\s*$"#)?;
+    let re = Regex::new(r#"(?i)DEL\s+WHERE\s+KEY\s*=\s*"([^"]+)"\s*$"#)?;
 
     if let Some(caps) = re.captures(command) {
         if let Some(key) = caps.get(1) {
@@ -123,7 +123,7 @@ pub fn parse_identifier_get(command: &str) -> anyhow::Result<()> {
 
 
 pub fn parse_identifier_set(command: &str) -> anyhow::Result<String> {
-    let re = Regex::new(r#"IDENTIFIER\s+SET\s+"([^"]+)"\s*$"#)?;
+    let re = Regex::new(r#"(?i)IDENTIFIER\s+SET\s+"([^"]+)"\s*$"#)?;
 
     if let Some(caps) = re.captures(command) {
         if let Some(id) = caps.get(1) {

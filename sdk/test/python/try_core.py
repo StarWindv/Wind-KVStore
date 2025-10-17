@@ -119,8 +119,8 @@ class TestWindKVCore(unittest.TestCase):
             mock_inner.get_identifier.assert_called()
 
             # 测试set_identifier
-            kv.set_identifier("new_identifier")
-            mock_inner.set_identifier.assert_called_once_with("new_identifier")
+            kv._set_identifier("new_identifier")
+            mock_inner._set_identifier.assert_called_once_with("new_identifier")
 
     def test_compact_method(self):
         

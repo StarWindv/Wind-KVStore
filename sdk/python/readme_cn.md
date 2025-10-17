@@ -1,6 +1,6 @@
 # Wind-KVStore Python SDK
 
-此SDK提供了与Wind-KVStore服务器交互的Python客户端，并打包了KVStore的核心[作为链接库](https://github.com/StarWindv/Wind-KVStore/blob/main/sdk/python/src/wind_kvstore/wind_kvcore.pyi)(您可以查看.pyi文件获得使用方法，接口与rust源码相同)，
+此SDK提供了与Wind-KVStore服务器交互的Python客户端，并打包了KVStore的核心[作为链接库](https://github.com/StarWindv/Wind-KVStore/blob/main/sdk/python/src/wind_kvstore/_wind_kvcore.pyi)(您可以查看.pyi文件获得使用方法，接口与rust源码相同)，
 
 支持键值存储操作、数据库管理和批量命令执行。
 
@@ -19,10 +19,10 @@ from wind_kvstore.client import WindKVStore
 with WindKVStore(kv_path="mydata.kv") as kv:
     # 存储数据
     kv.put_kv("username", "alice")
-    
+
     # 检索数据
-    print(kv.get_value("username"))  # 输出: alice
-    
+    print(kv._get_value("username"))  # 输出: alice
+
     # 执行批量命令
     result = kv.execute('PUT "email": "alice@example.com"; GET WHERE KEY="email"')
     print(result)
@@ -64,11 +64,11 @@ with WindKVStore(host="127.0.0.1", port=14514, kv_path="userdata.kv") as kv:
     # 存储用户信息
     kv.put_kv("user:1001", '{"name": "Alice", "email": "alice@example.com"}')
     kv.put_kv("user:1002", '{"name": "Bob", "email": "bob@example.com"}')
-    
+
     # 获取用户数据
-    user_data = kv.get_value("user:1001")
+    user_data = kv._get_value("user:1001")
     print(f"User 1001: {user_data}")
-    
+
     # 批量操作
     commands = '''
         PUT "config:theme": "dark";
@@ -77,11 +77,11 @@ with WindKVStore(host="127.0.0.1", port=14514, kv_path="userdata.kv") as kv:
     '''
     results = kv.state_execute(commands)
     print(f"Batch operation results: {results}")
-    
+
     # 设置数据库标识符
     kv.set_kv_id("user_database")
     print(f"Database ID: {kv.get_kv_id()}")
-    
+
     # 数据库维护
     kv.compact()
 ```

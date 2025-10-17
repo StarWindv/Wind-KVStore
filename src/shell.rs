@@ -1,4 +1,3 @@
-// src/shell.rs
 use crate::kvstore::KVStore;
 use crate::utils::{
     parse_put_command,
@@ -91,8 +90,7 @@ impl Shell {
                 continue;
             }
 
-            // 处理多行输入直到分号
-            let mut command = input.to_string();
+                        let mut command = input.to_string();
             while !command.ends_with(';') && !command.starts_with(".") {
                 reader.set_prompt(wait_prompt.as_str())?;
                 if let ReadResult::Input(cont) = reader.read_line()? {
@@ -102,8 +100,7 @@ impl Shell {
                 }
             }
 
-            // 移除结尾分号
-            if command.ends_with(';') {
+                        if command.ends_with(';') {
                 command.pop();
             }
 
@@ -128,10 +125,8 @@ impl Shell {
     fn get_prompt(&self) -> String {
         match &self.current_path {
             Some(path) => {
-                // 将String转换为Path
-                let path_path = Path::new(path);
-                // 提取文件名，如果没有则使用完整路径
-                let file_name = path_path.file_name()
+                                let path_path = Path::new(path);
+                                let file_name = path_path.file_name()
                     .and_then(|os_str| os_str.to_str())
                     .unwrap_or(path);
                 
@@ -146,18 +141,15 @@ impl Shell {
     fn execute_command(&mut self, command: &str) -> Result<String> {
         let command = command.trim();
         
-        // 处理元命令
-        if command.starts_with('.') {
+                if command.starts_with('.') {
             return self.handle_meta_command(command);
         }
         
-        // 检查数据库是否打开
-        if self.store.is_none() {
+                if self.store.is_none() {
             return Err(anyhow!("No database open. Use .open first"));
         }
         
-        // 解析命令
-        if let Ok(cmd) = parse_put_command(command) {
+                if let Ok(cmd) = parse_put_command(command) {
             return self.handle_put_command(cmd);
         }
 
@@ -168,10 +160,8 @@ impl Shell {
             Ok(ParsedGetCommand::Key(key)) => {
                 return self.handle_get_command(key);
             }
-            Err(msg) => {
-                println!("{}", msg);
-            } // continue another line.
-        }
+            Err(_msg) => {
+                            }         }
 
         if let Ok(key) = parse_delete_command(command) {
             return self.handle_delete_command(key);
@@ -235,8 +225,7 @@ impl Shell {
 
 
     fn open_database(&mut self, path: &str) -> Result<String> {
-        // 关闭当前数据库
-        if let Some(store) = self.store.take() {
+                if let Some(store) = self.store.take() {
             store.close()?;
         }
         
@@ -251,7 +240,6 @@ impl Shell {
                 return Err(anyhow!("Database creation canceled"));
             }
         }
-        
 
         let store = KVStore::open(path, None)?;
         
@@ -272,17 +260,12 @@ impl Shell {
         for (key, value) in kvs {
             store.put(key.as_bytes(), value.as_bytes())?;
         }
-        
         Ok(format!("Inserted {} key-value pairs", length))
     }
 
 
     fn handle_get_command(&mut self, key: String) -> Result<String> {
         let store = self.store.as_mut().ok_or(anyhow!("No database open"))?;
-        // 核心逻辑：如果 key 是 "*"（没有引号），则获取所有键值对
-        // 如果 key 是 "*"（有引号），则查找键为 "*" 的特定键值对
-        // 这个区分已经在命令解析阶段完成，所以咱直接使用结果就ok.
-
         if let Some(value) = store.get(key.as_bytes())? {
             match String::from_utf8(value.clone()) {
                 Ok(s) => Ok(s),
@@ -304,8 +287,7 @@ impl Shell {
         let store = self.store.as_mut().ok_or(anyhow!("No database open"))?;
 
         let all_data = store.get_all()?;
-        // println!("{:?}", all_data);
-        if all_data.is_empty() {
+                if all_data.is_empty() {
             return Ok("No data found".to_string());
         }
 

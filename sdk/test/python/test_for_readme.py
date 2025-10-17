@@ -8,7 +8,7 @@ with WindKVStore(host="127.0.0.1", port=14514, kv_path="userdata.kv") as kv:
     kv.put_kv("user:1002", '{"name": "Bob", "email": "bob@example.com"}')
 
     # 获取用户数据
-    user_data = kv.get_value("user:1001")
+    user_data = kv._get_value("user:1001")
     print(f"User 1001: {user_data}")
 
     # 批量操作

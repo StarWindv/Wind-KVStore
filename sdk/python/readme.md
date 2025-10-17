@@ -1,6 +1,6 @@
 # Wind-KVStore Python SDK  
 
-This SDK provides a Python client for interacting with Wind-KVStore servers and packages the core KVStore [as a linked library](https://github.com/StarWindv/Wind-KVStore/blob/main/sdk/python/src/wind_kvstore/wind_kvcore.pyi). It supports key-value storage operations, database management, and batch command execution.
+This SDK provides a Python client for interacting with Wind-KVStore servers and packages the core KVStore [as a linked library](https://github.com/StarWindv/Wind-KVStore/blob/main/sdk/python/src/wind_kvstore/_wind_kvcore.pyi). It supports key-value storage operations, database management, and batch command execution.
 
 ## Installation
 
@@ -17,10 +17,10 @@ from wind_kvstore.client import WindKVStore
 with WindKVStore(kv_path="mydata.kv") as kv:
     # Store data
     kv.put_kv("username", "alice")
-    
+
     # Retrieve data
-    print(kv.get_value("username"))  # Outputs: alice
-    
+    print(kv._get_value("username"))  # Outputs: alice
+
     # Execute batch commands
     result = kv.execute('PUT "email": "alice@example.com"; GET WHERE KEY="email"')
     print(result)
@@ -29,28 +29,28 @@ with WindKVStore(kv_path="mydata.kv") as kv:
 ## Core Features
 
 ### Database Management
-| Method                   | Description           |
-|--------------------------|-----------------------|
-| `open(path)`             | Opens a database file |
-| `close()`                | Closes current database |
-| `get_current_path()`     | Gets current database path |
-| `change_kv(path)`        | Switches to a new database |
+| Method               | Description                |
+|----------------------|----------------------------|
+| `open(path)`         | Opens a database file      |
+| `close()`            | Closes current database    |
+| `get_current_path()` | Gets current database path |
+| `change_kv(path)`    | Switches to a new database |
 
 ### Key-Value Operations
-| Method                   | Description          |
-|--------------------------|----------------------|
-| `put_kv(key, value)`     | Stores a key-value pair |
-| `get_value(key)`         | Retrieves value by key |
-| `del_kv(key)`            | Deletes a key-value pair |
+| Method               | Description              |
+|----------------------|--------------------------|
+| `put_kv(key, value)` | Stores a key-value pair  |
+| `get_value(key)`     | Retrieves value by key   |
+| `del_kv(key)`        | Deletes a key-value pair |
 
 ### Advanced Features
-| Method                       | Description             |
-|------------------------------|-------------------------|
-| `compact()`                  | Compacts the database   |
-| `get_kv_id()`                | Gets database identifier |
-| `set_kv_id(identifier)`      | Sets database identifier |
-| `execute(command)`           | Executes raw commands   |
-| `state_execute(command)`     | Executes commands and returns status |
+| Method                   | Description                          |
+|--------------------------|--------------------------------------|
+| `compact()`              | Compacts the database                |
+| `get_kv_id()`            | Gets database identifier             |
+| `set_kv_id(identifier)`  | Sets database identifier             |
+| `execute(command)`       | Executes raw commands                |
+| `state_execute(command)` | Executes commands and returns status |
 
 ## Complete Example
 
@@ -62,11 +62,11 @@ with WindKVStore(host="127.0.0.1", port=14514, kv_path="userdata.kv") as kv:
     # Store user information
     kv.put_kv("user:1001", '{"name": "Alice", "email": "alice@example.com"}')
     kv.put_kv("user:1002", '{"name": "Bob", "email": "bob@example.com"}')
-    
+
     # Retrieve user data
-    user_data = kv.get_value("user:1001")
+    user_data = kv._get_value("user:1001")
     print(f"User 1001: {user_data}")
-    
+
     # Batch operations
     commands = '''
         PUT "config:theme": "dark";
@@ -75,11 +75,11 @@ with WindKVStore(host="127.0.0.1", port=14514, kv_path="userdata.kv") as kv:
     '''
     results = kv.state_execute(commands)
     print(f"Batch operation results: {results}")
-    
+
     # Set database identifier
     kv.set_kv_id("user_database")
     print(f"Database ID: {kv.get_kv_id()}")
-    
+
     # Database maintenance
     kv.compact()
 ```
