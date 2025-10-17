@@ -4,6 +4,7 @@
 
 ![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/StarWindv/Wind-KVStore)
 
 Wind-KVStore is a lightweight, efficient, and persistent key-value storage engine implemented in Rust. The project combines a high-performance storage engine with a user-friendly command-line interface and net server, making it suitable for scenarios requiring local persistent storage.
 
@@ -36,10 +37,10 @@ cd wind-kvstore
 cargo build --release
 
 # Run interactive Shell
-cargo run --bin shell --release
+cargo run --bin wkshell --release
 
 # Run server
-cargo run --bin server --release
+cargo run --bin wkserver --release
 ```
 
 ## \>_ Interactive Shell Guide
@@ -134,9 +135,13 @@ impl KVStore {
 ├── doc/                # Another documentation(Chinese and English)
 ├── README.md           # Project documentation (English)
 ├── README_CN.md        # Project documentation (Chinese)
+├── LICENSE             # MIT
 ├── sdk
 │   ├── python/         # Wind-KVStore server's sdk for python
 │   └── test/           # Test sdk
+├── GUI
+│   ├── src/            # Wind KVStore's visualize interface
+│   └── LICENSE         # GPLv3
 └── src
     ├── config.rs       # Server configuration loader
     ├── kvstore.rs      # Core KV storage engine implementation

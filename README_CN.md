@@ -4,6 +4,7 @@
 
 ![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/StarWindv/Wind-KVStore)
 
 Wind-KVStore 是一个轻量级、高效且持久的键值存储引擎，采用 Rust 实现。项目结合了高性能存储引擎、用户友好的命令行界面和网络服务器，适用于需要本地持久化存储的场景。
 
@@ -36,10 +37,10 @@ cd wind-kvstore
 cargo build --release
 
 # 运行交互式 Shell
-cargo run --bin shell --release
+cargo run --bin wkshell --release
 
 # 运行服务器
-cargo run --bin server --release
+cargo run --bin wkserver --release
 ```
 
 ## \>_ 交互式 Shell 使用指南
@@ -135,6 +136,10 @@ impl KVStore {
 ├── doc/                # 其他文档（中英文）
 ├── README.md           # 项目文档（英文）
 ├── README_CN.md        # 项目文档（中文）
+├── LICENSE             # MIT许可证
+├── GUI
+│   ├── src/            # Wind-KVStore的可视化界面
+│   └── LICENSE         # GPLv3许可证
 ├── sdk
 │   ├── python/         # Wind-KVStore服务器的Python SDK
 │   └── test/           # SDK测试
