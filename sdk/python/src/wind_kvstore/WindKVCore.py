@@ -50,7 +50,13 @@ class WindKVCore:
             path: str,
             db_identifier: Optional[str] = None
     ):
-        path = os.path.abspath(path)
+        path = os.path.abspath(
+            os.path.expandvars(
+                os.path.expanduser(
+                    path
+                )
+            )
+        )
         self.__inner = _WindKVCore(path, db_identifier)
         self.path = path
         self.db_identifier = self.__inner.get_identifier()
