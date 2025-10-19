@@ -152,6 +152,18 @@ impl KVStore {
     └── utils.rs        # Utility functions
 ```
 
+## 📦 Another Modules
+
+### Visualize Interface
+- [UI](./GUI)
+
+### Python SDK
+- [Python SDK](./sdk/python)
+
+### Python Lib
+- [Python Lib](https://github.com/starwindv/wind-kvstore-lib)
+
+
 ## ⚙️ Technical Implementation
 
 ### Storage Architecture
@@ -168,17 +180,6 @@ impl KVStore {
 |         ...           |
 +-----------------------+
 ```
-
-## 📦 Another Modules
-
-### Visualize Interface
-- [UI](./GUI)
-
-### Python SDK
-- [Python SDK](./sdk/python)
-
-### Python Lib
-- [Python Lib](https://github.com/starwindv/wind-kvstore-lib)
 
 ### Key Features
 
@@ -201,6 +202,7 @@ impl KVStore {
     - Automatic free page recycling
     - Online database compression
     - Efficient storage layout
+
 
 ## 🤝 Contribution Guide
 
