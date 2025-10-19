@@ -23,9 +23,10 @@ license = { text = "GPLv3" }
 requires-python = ">=3.10"
 
 dependencies = [
-    "wind_kvstore",
     "PyQt5",
-    "stv_utils"
+    "stv_utils",
+#    "wind_kvcore @ git+https://gh.llkk.cc/https://github.com/starwindv/wind-kvstore-lib@main", # mirror.
+    "wind_kvcore @ git+https://github.com/starwindv/wind-kvstore-lib@main",
 ]
 urls = { "Homepage" = "https://github.com/StarWindv/Wind-KVStore/tree/main/GUI" }
 
