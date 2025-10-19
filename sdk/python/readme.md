@@ -1,6 +1,8 @@
 # Wind-KVStore Python SDK  
 
-This SDK provides a Python client for interacting with Wind-KVStore servers and packages the core KVStore [as a linked library](https://github.com/StarWindv/Wind-KVStore/blob/main/sdk/python/src/wind_kvstore/_wind_kvcore.pyi). It supports key-value storage operations, database management, and batch command execution.
+This SDK provides a Python client for interacting with Wind-KVStore servers.
+
+**Note that the link library has been migrated to the [new project](https://github.com/starwindv/wind-kvstore-lib). You can compile it as needed**
 
 ## Installation
 

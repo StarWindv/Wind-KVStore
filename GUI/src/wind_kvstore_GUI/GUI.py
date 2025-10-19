@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget
 )
 
-from wind_kvstore.WindKVCore import WindKVCore
+from wind_kvcore import WindKVCore
 from stv_utils import print
 
 

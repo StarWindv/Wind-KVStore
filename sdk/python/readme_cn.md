@@ -1,6 +1,8 @@
 # Wind-KVStore Python SDK
 
-此SDK提供了与Wind-KVStore服务器交互的Python客户端，并打包了KVStore的核心[作为链接库](https://github.com/StarWindv/Wind-KVStore/blob/main/sdk/python/src/wind_kvstore/_wind_kvcore.pyi)(您可以查看.pyi文件获得使用方法，接口与rust源码相同)，
+此SDK提供了与Wind-KVStore服务器交互的Python客户端
+
+**注意, 链接库已迁移到[新项目](https://github.com/starwindv/wind-kvstore-lib)，您可以根据需要来自行编译**
 
 支持键值存储操作、数据库管理和批量命令执行。
 
