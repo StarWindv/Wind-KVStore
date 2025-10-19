@@ -153,6 +153,18 @@ impl KVStore {
     └── utils.rs        # 工具函数
 ```
 
+## 📦 相关模块
+
+### 可视化界面
+- [UI](./GUI)
+
+### Python SDK
+- [Python SDK](./sdk/python)
+
+### Python Lib
+- [Python Lib](https://github.com/starwindv/wind-kvstore-lib)
+
+
 ## ⚙️ 技术实现
 
 ### 存储架构
