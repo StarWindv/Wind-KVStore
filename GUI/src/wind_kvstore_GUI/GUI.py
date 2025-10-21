@@ -79,7 +79,7 @@ class KVConnectionDialog(QDialog):
             "Select Wind-KVStore File",
             os.path.join(os.getcwd(), ".."),
             "Wind (*.wind, *.kv);;All (*.*)",
-            "*.wind"
+            "Wind (*.wind, *.kv)"
         )
         if file_path:
             self.file_edit.setText(file_path)
