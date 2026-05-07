@@ -1,5 +1,10 @@
-use regex::Regex;
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
+use winnow::{
+    ascii::multispace0,
+    combinator::delimited,
+    token::take_while,
+    Parser,
+};
 use std::env;
 use std::net::{SocketAddr, TcpListener, IpAddr};
 use std::sync::OnceLock;
@@ -10,8 +15,22 @@ use if_addrs::get_if_addrs;
 
 #[derive(Debug)]
 pub enum ParsedGetCommand {
-    All,        // GET WHERE KEY=*; (获取所有键值对)
-    Key(String), // GET WHERE KEY="specific_key"; (获取特定键)
+    All,
+    Key(String),
+}
+
+
+fn keyword_ic<'a>(kw: &'static str) -> impl Parser<&'a str, &'a str, winnow::error::ContextError> {
+    take_while(1.., |c: char| c.is_alphabetic())
+        .verify(move |s: &str| s.eq_ignore_ascii_case(kw))
+}
+
+fn quoted_str<'a>() -> impl Parser<&'a str, &'a str, winnow::error::ContextError> {
+    delimited('"', take_while(0.., |c| c != '"'), '"')
+}
+
+fn swallow_ws(input: &mut &str) {
+    let _ = multispace0::<_, winnow::error::ContextError>.parse_next(input);
 }
 
 
@@ -46,101 +65,192 @@ pub fn output_title(is_server: Option<bool>) {
 }
 
 
-pub fn parse_put_command(command: &str) -> anyhow::Result<Vec<(String, String)>> {
-    let re = Regex::new(r#"(?i)PUT\s+"([^"]+)"\s*:\s*"([^"]+)"(?:\s*,\s*"([^"]+)"\s*:\s*"([^"]+)")*\s*$"#)?;
+pub fn parse_put_command(command: &str) -> Result<Vec<(String, String)>> {
+    let mut input = command.trim();
 
-    if let Some(caps) = re.captures(command) {
-        let mut kvs = Vec::new();
+    keyword_ic("PUT")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid PUT command: expected PUT keyword"))?;
 
-        // 第一个键值对
-        if let (Some(k), Some(v)) = (caps.get(1), caps.get(2)) {
-            kvs.push((k.as_str().to_string(), v.as_str().to_string()));
+    swallow_ws(&mut input);
+
+    let mut pairs = Vec::new();
+    loop {
+        swallow_ws(&mut input);
+        let key = quoted_str()
+            .parse_next(&mut input)
+            .map_err(|_| anyhow!("Invalid PUT command: expected quoted key"))?;
+
+        swallow_ws(&mut input);
+        if !input.starts_with(':') {
+            return Err(anyhow!("Invalid PUT command: expected ':' separator"));
         }
+        input = &input[1..];
 
-        // 后续键值对
-        let mut i = 3;
-        while i < caps.len() {
-            if let (Some(k), Some(v)) = (caps.get(i), caps.get(i + 1)) {
-                kvs.push((k.as_str().to_string(), v.as_str().to_string()));
-                i += 2;
-            } else {
-                break;
-            }
+        swallow_ws(&mut input);
+        let value = quoted_str()
+            .parse_next(&mut input)
+            .map_err(|_| anyhow!("Invalid PUT command: expected quoted value"))?;
+
+        pairs.push((key.to_string(), value.to_string()));
+
+        swallow_ws(&mut input);
+        if input.starts_with(',') {
+            input = &input[1..];
+            continue;
         }
-
-        if kvs.is_empty() {
-            return Err(anyhow!("Invalid PUT command format"));
-        }
-
-        Ok(kvs)
-    } else {
-        Err(anyhow!("Invalid PUT command format"))
+        break;
     }
+
+    swallow_ws(&mut input);
+    if !input.is_empty() {
+        return Err(anyhow!("Invalid PUT command: unexpected trailing input"));
+    }
+    if pairs.is_empty() {
+        return Err(anyhow!("Invalid PUT command: no key-value pairs found"));
+    }
+
+    Ok(pairs)
 }
 
 
-pub fn parse_get_command(command: &str) -> anyhow::Result<ParsedGetCommand> {
-    let command = command.trim();
+pub fn parse_get_command(command: &str) -> Result<ParsedGetCommand> {
+    let mut input = command.trim();
 
-    // 匹配 GET WHERE KEY=*; （没有引号的星号）
-    let star_pattern = Regex::new(r"(?i)^GET\s+WHERE\s+KEY\s*=\s*\*\s*$")?;
-    if star_pattern.is_match(command) {
+    keyword_ic("GET")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid GET command"))?;
+    swallow_ws(&mut input);
+    keyword_ic("WHERE")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid GET command: expected WHERE"))?;
+    swallow_ws(&mut input);
+    keyword_ic("KEY")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid GET command: expected KEY"))?;
+    swallow_ws(&mut input);
+
+    if !input.starts_with('=') {
+        return Err(anyhow!("Invalid GET command: expected '='"));
+    }
+    input = &input[1..];
+    swallow_ws(&mut input);
+
+    if input.starts_with('*') {
+        input = &input[1..];
+        swallow_ws(&mut input);
+        if !input.is_empty() {
+            return Err(anyhow!("Invalid GET command: unexpected trailing input after '*'"));
+        }
         return Ok(ParsedGetCommand::All);
     }
 
-    // 匹配 GET WHERE KEY="*"; （有引号的星号）
-    let quoted_pattern = Regex::new(r#"(?i)^GET\s+WHERE\s+KEY\s*=\s*"([^"]+)"\s*$"#)?;
-    if let Some(caps) = quoted_pattern.captures(command) {
-        if let Some(key_match) = caps.get(1) {
-            return Ok(ParsedGetCommand::Key(key_match.as_str().to_string()));
-        }
+    let key = quoted_str()
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid GET command: expected quoted key or '*'"))?;
+
+    swallow_ws(&mut input);
+    if !input.is_empty() {
+        return Err(anyhow!("Invalid GET command: unexpected trailing input"));
     }
 
-    Err(anyhow!("Invalid GET command: {}", command))
+    Ok(ParsedGetCommand::Key(key.to_string()))
 }
 
 
-pub fn parse_delete_command(command: &str) -> anyhow::Result<String> {
-    let re = Regex::new(r#"(?i)DEL\s+WHERE\s+KEY\s*=\s*"([^"]+)"\s*$"#)?;
+pub fn parse_delete_command(command: &str) -> Result<String> {
+    let mut input = command.trim();
 
-    if let Some(caps) = re.captures(command) {
-        if let Some(key) = caps.get(1) {
-            return Ok(key.as_str().to_string());
-        }
+    keyword_ic("DEL")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid DELETE command: expected DEL"))?;
+    swallow_ws(&mut input);
+    keyword_ic("WHERE")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid DELETE command: expected WHERE"))?;
+    swallow_ws(&mut input);
+    keyword_ic("KEY")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid DELETE command: expected KEY"))?;
+    swallow_ws(&mut input);
+
+    if !input.starts_with('=') {
+        return Err(anyhow!("Invalid DELETE command: expected '='"));
+    }
+    input = &input[1..];
+    swallow_ws(&mut input);
+
+    let key = quoted_str()
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid DELETE command: expected quoted key"))?;
+
+    swallow_ws(&mut input);
+    if !input.is_empty() {
+        return Err(anyhow!("Invalid DELETE command: unexpected trailing input"));
     }
 
-    Err(anyhow!("Invalid DELETE command format"))
+    Ok(key.to_string())
 }
 
 
-pub fn parse_identifier_get(command: &str) -> anyhow::Result<()> {
-    if command.trim().eq_ignore_ascii_case("IDENTIFIER GET") {
-        Ok(())
-    } else {
-        Err(anyhow!("Invalid IDENTIFIER GET command"))
+pub fn parse_identifier_get(command: &str) -> Result<()> {
+    let mut input = command.trim();
+
+    keyword_ic("IDENTIFIER")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid IDENTIFIER command"))?;
+    swallow_ws(&mut input);
+    keyword_ic("GET")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid IDENTIFIER command: expected GET"))?;
+
+    swallow_ws(&mut input);
+    if !input.is_empty() {
+        return Err(anyhow!("Invalid IDENTIFIER GET command: unexpected trailing input"));
     }
+
+    Ok(())
 }
 
 
-pub fn parse_identifier_set(command: &str) -> anyhow::Result<String> {
-    let re = Regex::new(r#"(?i)IDENTIFIER\s+SET\s+"([^"]+)"\s*$"#)?;
+pub fn parse_identifier_set(command: &str) -> Result<String> {
+    let mut input = command.trim();
 
-    if let Some(caps) = re.captures(command) {
-        if let Some(id) = caps.get(1) {
-            return Ok(id.as_str().to_string());
-        }
+    keyword_ic("IDENTIFIER")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid IDENTIFIER command"))?;
+    swallow_ws(&mut input);
+    keyword_ic("SET")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid IDENTIFIER command: expected SET"))?;
+    swallow_ws(&mut input);
+
+    let id = quoted_str()
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid IDENTIFIER SET command: expected quoted identifier"))?;
+
+    swallow_ws(&mut input);
+    if !input.is_empty() {
+        return Err(anyhow!("Invalid IDENTIFIER SET command: unexpected trailing input"));
     }
 
-    Err(anyhow!("Invalid IDENTIFIER SET command"))
+    Ok(id.to_string())
 }
 
 
-pub fn parse_compact(command: &str) -> anyhow::Result<()> {
-    if command.trim().eq_ignore_ascii_case("COMPACT") {
-        Ok(())
-    } else {
-        Err(anyhow!("Invalid COMPACT command"))
+pub fn parse_compact(command: &str) -> Result<()> {
+    let mut input = command.trim();
+
+    keyword_ic("COMPACT")
+        .parse_next(&mut input)
+        .map_err(|_| anyhow!("Invalid COMPACT command"))?;
+
+    swallow_ws(&mut input);
+    if !input.is_empty() {
+        return Err(anyhow!("Invalid COMPACT command: unexpected trailing input"));
     }
+
+    Ok(())
 }
 
 
@@ -156,11 +266,6 @@ pub fn server_info(
     route: &str,
 )
 {
-    /*
-    # """
-    # [IP] [TIME] [METHOD] [REQUESTS]
-    # """
-    */
     let time: String = get_formatted_time();
     let output: String = format!("[{}] [{}] [{}] [{}]", ip, time, method, route);
     println!("{}", output);
@@ -178,23 +283,18 @@ fn get_header_value<'a>(
 
 #[allow(unused)]
 pub fn get_client_ip(req: &HttpRequest) -> String {
-    // 优先检查 CF-Connecting-IP (Cloudflare 提供的真实 IP 头)
     if let Some(ip) = get_header_value(&req, "CF-Connecting-IP") {
         return ip.to_string();
     }
 
-    // 其次检查 X-Forwarded-For 头
     if let Some(ip) = get_header_value(&req, "X-Forwarded-For") {
-        // X-Forwarded-For 可能包含多个 IP，取第一个
         let first_ip = ip.split(',').next().unwrap_or(ip).trim();
         return first_ip.to_string();
     }
 
-    // 如果没有上述头信息，使用远程地址
     let conn_info = req.connection_info();
     match conn_info.peer_addr() {
         Some(ip_str) => {
-            // 尝试解析为 SocketAddr 以提取纯 IP 部分
             match ip_str.parse::<SocketAddr>() {
                 Ok(addr) => addr.ip().to_string(),
                 Err(_) =>  ip_str.to_string(),
@@ -207,9 +307,7 @@ pub fn get_client_ip(req: &HttpRequest) -> String {
 
 #[allow(unused)]
 pub fn format_header(req: &HttpRequest, output: OnceLock<bool>) {
-    // println!("{:?}", output);
     if let Some (flag) = output.get() {
-        // println!("flag: {}", flag);
         if *flag {
             println!(" * Receive Headers: ");
             for (name, value) in req.headers() {
@@ -235,7 +333,6 @@ pub fn get_session_from_header(http_req: &HttpRequest) -> String{
 pub fn get_lan_ip() -> Option<String> {
     get_if_addrs().ok().and_then(|addrs| {
         addrs.into_iter()
-            // 过滤回环接口和非IPv4地址（按需调整）
             .filter(|iface| !iface.is_loopback() && iface.ip().is_ipv4())
             .map(|iface| iface.ip().to_string())
             .next()
@@ -256,7 +353,7 @@ pub fn is_local_port_available(host: String, port: u16) -> bool {
         Err(_) => return false,
     };
     match TcpListener::bind(SocketAddr::new(ip, port)) {
-        Ok(_) => true,  // 绑定成功说明端口可用
-        Err(_) => false // 绑定失败说明端口被占用或无权访问
+        Ok(_) => true,
+        Err(_) => false
     }
 }

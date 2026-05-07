@@ -226,7 +226,7 @@ async fn open_db(
 
     let mut store = session.store.lock().await;
 
-    match KVStore::open(&req.path, None) {
+    match KVStore::open_exclusive(&req.path, None) {
         Ok(kv_store) => {
             *store = Some(kv_store);
             *session.current_path.lock().await = Some(req.path.clone());

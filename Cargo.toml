@@ -12,7 +12,6 @@ chrono = "0.4.41"
 linefeed = "0.6.0"
 linked-hash-map = "0.5.6"
 memmap2 = "0.9.7"
-regex = "1.11.1"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0.12"
 tokio = { version = "1", features = ["full"] }
@@ -25,6 +24,8 @@ actix-web = "4.11.0"
 futures = "0.3.31"
 if-addrs = "0.14.0"
 clap = { version = "4.5.41", features = ["derive"] }
+fs2 = "0.4"
+winnow = "1.0.2"
 
 
 [build-dependencies]

@@ -1,6 +1,7 @@
 // src/lib.rs
 use anyhow::{anyhow, bail, Result};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use fs2::FileExt;
 use linked_hash_map::LinkedHashMap;
 use log::error;
 use memmap2::{MmapMut, MmapOptions};
@@ -315,7 +316,7 @@ impl WALManager {
 
             match op_type {
                 Self::OP_PUT => {
-                    if let Err(e) = store.put_internal(&key, &value, false) {
+                    if let Err(e) = store.put_internal(&key, &value) {
                         error!("WAL recovery put failed: {}", e);
                     }
                 }
@@ -337,6 +338,30 @@ impl WALManager {
 }
 
 
+struct WriteGuard {
+    lock_file: File,
+}
+
+impl WriteGuard {
+    fn acquire(path: &Path) -> Result<Self> {
+        let lock_path = path.with_extension("lock");
+        let lock_file = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .open(&lock_path)?;
+        lock_file.lock_exclusive()?;
+        Ok(WriteGuard { lock_file })
+    }
+}
+
+impl Drop for WriteGuard {
+    fn drop(&mut self) {
+        let _ = self.lock_file.unlock();
+    }
+}
+
+
 // 键值存储引擎
 pub struct KVStore {
     path: PathBuf,
@@ -348,19 +373,47 @@ pub struct KVStore {
     dirty_pages: HashSet<u32>,
     wal_manager: WALManager,
     last_used_page: u32,
+    session_lock: Option<File>,
 }
 
 
 impl KVStore {
     pub fn open<P: AsRef<Path>>(path: P, db_identifier: Option<&str>) -> Result<Self> {
-        let path = path.as_ref();
+        Self::open_internal(path.as_ref(), db_identifier, false)
+    }
+
+    pub fn open_exclusive<P: AsRef<Path>>(path: P, db_identifier: Option<&str>) -> Result<Self> {
+        Self::open_internal(path.as_ref(), db_identifier, true)
+    }
+
+    fn open_internal(path: &Path, db_identifier: Option<&str>, exclusive: bool) -> Result<Self> {
         let wal_manager = WALManager::new(path);
 
-        if !path.exists() {
-            Self::create_new_db(path, db_identifier, wal_manager)
+        let session_lock = if exclusive {
+            let lock_path = path.with_extension("session.lock");
+            let lock_file = OpenOptions::new()
+                .create(true)
+                .read(true)
+                .write(true)
+                .open(&lock_path)?;
+            lock_file.try_lock_exclusive().map_err(|_| {
+                anyhow!(
+                    "Database '{}' is already opened exclusively by another server",
+                    path.display()
+                )
+            })?;
+            Some(lock_file)
         } else {
-            Self::open_existing_db(path, db_identifier, wal_manager)
-        }
+            None
+        };
+
+        let store = if !path.exists() {
+            Self::create_new_db(path, db_identifier, wal_manager, session_lock)?
+        } else {
+            Self::open_existing_db(path, db_identifier, wal_manager, session_lock)?
+        };
+
+        Ok(store)
     }
 
 
@@ -368,6 +421,7 @@ impl KVStore {
         path: &Path,
         db_identifier: Option<&str>,
         wal_manager: WALManager,
+        session_lock: Option<File>,
     ) -> Result<Self> {
         let file = OpenOptions::new()
             .read(true)
@@ -415,6 +469,7 @@ impl KVStore {
             dirty_pages: HashSet::new(),
             wal_manager,
             last_used_page: 1,
+            session_lock,
         })
     }
 
@@ -423,6 +478,7 @@ impl KVStore {
         path: &Path,
         db_identifier: Option<&str>,
         wal_manager: WALManager,
+        session_lock: Option<File>,
     ) -> Result<Self> {
         // 文件需要可变，但变量名不需要 mut
         let file = OpenOptions::new().read(true).write(true).open(path)?;
@@ -448,6 +504,7 @@ impl KVStore {
             dirty_pages: HashSet::new(),
             wal_manager,
             last_used_page: 0,
+            session_lock,
         };
 
         store.build_index()?;
@@ -459,18 +516,21 @@ impl KVStore {
         );
         wal_manager.recover(&mut store)?;
 
+        store.build_index()?;
+
         Ok(store)
     }
 
 
     pub fn put(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
+        let _guard = WriteGuard::acquire(&self.path)?;
         self.wal_manager
             .log_operation(WALManager::OP_PUT, key, Some(value))?;
-        self.put_internal(key, value, true)
+        self.put_internal(key, value)
     }
 
 
-    fn put_internal(&mut self, key: &[u8], value: &[u8], update_index: bool) -> Result<()> {
+    fn put_internal(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
         if self.key_to_page.contains_key(key) {
             self.update_existing(key, value)?;
             return Ok(());
@@ -484,7 +544,7 @@ impl KVStore {
 
             let free_space = PAGE_SIZE - PageHeader::SIZE - header.data_len as usize;
             if required_space <= free_space {
-                self.insert_to_page(self.last_used_page, key, value, update_index)?;
+                self.insert_to_page(self.last_used_page, key, value)?;
                 return Ok(());
             }
         }
@@ -501,14 +561,14 @@ impl KVStore {
 
             let free_space = PAGE_SIZE - PageHeader::SIZE - header.data_len as usize;
             if required_space <= free_space {
-                self.insert_to_page(page_num, key, value, update_index)?;
+                self.insert_to_page(page_num, key, value)?;
                 return Ok(());
             }
         }
 
         // 分配新页
         let new_page = self.allocate_page()?;
-        self.insert_to_page(new_page, key, value, update_index)?;
+        self.insert_to_page(new_page, key, value)?;
         Ok(())
     }
     
@@ -646,6 +706,7 @@ impl KVStore {
 
 
     pub fn delete(&mut self, key: &[u8]) -> Result<()> {
+        let _guard = WriteGuard::acquire(&self.path)?;
         self.wal_manager
             .log_operation(WALManager::OP_DELETE, key, None)?;
         self.delete_internal(key, true)
@@ -721,30 +782,33 @@ impl KVStore {
         header.kv_count = kv_ranges.len() as u16;
         header.data_len = new_data.len() as u16;
 
-        if update_index {
-            self.build_index()?;
-        }
-
         if header.kv_count == 0 {
             self.free_page(page_num)?;
-            return Ok(());
+        } else {
+            let mut new_page_data = header.pack().to_vec();
+            new_page_data.extend_from_slice(&new_data);
+            new_page_data.resize(PAGE_SIZE, 0);
+            self.write_page(page_num, &new_page_data)?;
         }
 
-        let mut new_page_data = header.pack().to_vec();
-        new_page_data.extend_from_slice(&new_data);
-        new_page_data.resize(PAGE_SIZE, 0);
+        if update_index {
+            self.build_index()?;
+        } else {
+            self.key_to_page.remove(key);
+        }
 
-        self.write_page(page_num, &new_page_data)?;
         Ok(())
     }
 
 
     pub fn compact(&mut self) -> Result<()> {
+        let _guard = WriteGuard::acquire(&self.path)?;
         let temp_path = self.path.with_extension("tmp");
         let mut temp_db = KVStore::create_new_db(
             &temp_path,
             Some(&self.header.db_identifier),
             WALManager::new(&temp_path),
+            None,
         )?;
 
         for page_num in 1..=self.header.total_pages {
@@ -801,10 +865,15 @@ impl KVStore {
         // 替换文件
         std::fs::rename(&temp_path, &self.path)?;
 
+        let old_lock = self.session_lock.take();
+        let path = self.path.clone();
+        let identifier = self.header.db_identifier.clone();
+
         *self = KVStore::open_existing_db(
-            &self.path,
-            Some(&self.header.db_identifier),
-            WALManager::new(&self.path),
+            &path,
+            Some(&identifier),
+            WALManager::new(&path),
+            old_lock,
         )?;
         Ok(())
     }
@@ -1079,7 +1148,6 @@ impl KVStore {
         page_num: u32,
         key: &[u8],
         value: &[u8],
-        update_index: bool,
     ) -> Result<()> {
         let page_data = self.read_page(page_num)?;
         let mut header = PageHeader::unpack(&page_data)?;
@@ -1125,9 +1193,7 @@ impl KVStore {
 
         self.write_page(page_num, &new_page_data)?;
 
-        if update_index {
-            self.key_to_page.insert(key.to_vec(), page_num);
-        }
+        self.key_to_page.insert(key.to_vec(), page_num);
         self.last_used_page = page_num;
 
         Ok(())
