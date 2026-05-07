@@ -6,7 +6,7 @@ use crate::utils::{
     parse_identifier_get,
     parse_identifier_set,
     parse_compact,
-    output_tile,
+    output_title,
     ParsedGetCommand
 };
 use anyhow::{anyhow, Result};
@@ -76,7 +76,7 @@ impl Shell {
 
 
     pub fn run(&mut self) -> Result<()> {
-        output_tile(Option::from(false));
+        output_title(Option::from(false));
 
         let reader = Interface::new("kvstore-shell")?;
         reader.set_prompt(self.get_prompt().as_str())?;
@@ -208,7 +208,7 @@ impl Shell {
             }
 
             ".title" => {
-                output_tile(Option::from(false));
+                output_title(Option::from(false));
                 Ok(String::new())
             }
 

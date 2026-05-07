@@ -1,5 +1,5 @@
 [package]
-name = "kvstore"
+name = "wind_kvstore"
 version = "0.0.2"
 edition = "2024"
 build = "build.rs"
@@ -8,7 +8,6 @@ build = "build.rs"
 anyhow = "1.0.98"
 byteorder = "1.5.0"
 chrono = "0.4.41"
-env_logger = "0.11.3"
 linefeed = "0.6.0"
 linked-hash-map = "0.5.6"
 memmap2 = "0.9.7"
@@ -32,8 +31,8 @@ chrono = "0.4.41"
 
 [[bin]]
 name = "wkshell"
-path = "src/shell_main.rs"
+path = "src/wkshell.rs"
 
 [[bin]]
 name = "wkserver"
-path = "src/server_main.rs"
+path = "src/wkserver.rs"
