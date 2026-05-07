@@ -3,6 +3,7 @@ name = "wind_kvstore"
 version = "0.0.2"
 edition = "2024"
 build = "build.rs"
+license = "MIT"
 
 [dependencies]
 anyhow = "1.0.98"

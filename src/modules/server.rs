@@ -1,7 +1,7 @@
 use crate::{
     utils,
     kvstore::KVStore,
-    modules::config
+    modules::config::ServerConfig,
 };
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder, get, post,
@@ -92,27 +92,90 @@ struct StatusResponse {
 }
 
 
-fn init_session_manager() -> SessionManager {
-    let manager: SessionManager = Arc::new(DashMap::new());
-    start_session_cleanup(manager.clone());
-    manager
+pub struct WindServer {
+    config: ServerConfig,
+    sessions: SessionManager,
+    print_header: bool,
 }
 
+impl WindServer {
+    pub fn new() -> Result<Self> {
+        let args = Args::parse();
+        let config = ServerConfig::load()?;
 
-fn start_session_cleanup(manager: SessionManager) {
-    tokio::spawn(async move {
-        let mut interval = time::interval(Duration::from_secs(60 * 5)); // 每5分钟检查一次
-        loop {
-            interval.tick().await;
-            let now = Instant::now();
-            // 使用 retain 的同步版本，在闭包内获取锁
-            manager.retain(|_, session| {
-                // 同步获取锁（注意：这里需要确保锁不会长时间持有）
-                let last_active = block_on(session.last_active.lock());
-                now.duration_since(*last_active) < Duration::from_secs(60 * 30) // 30分钟超时
-            });
+        if !utils::is_local_port_available(config.host.clone(), config.port) {
+            return Err(anyhow!(
+                " * Port `{}` on Host `{}` is already in use.",
+                config.port,
+                config.host
+            ));
         }
-    });
+
+        let sessions = Arc::new(DashMap::new());
+        Self::spawn_session_cleanup(sessions.clone());
+
+        Ok(WindServer {
+            config,
+            sessions,
+            print_header: args.header,
+        })
+    }
+
+    pub async fn run(self) -> Result<()> {
+        PRINT_HEADER
+            .set(self.print_header)
+            .expect("Global flag init succeed.");
+
+        let sessions = self.sessions;
+        let config = self.config;
+
+        println!(" * Starting Wind-KVStore Server...");
+        if config.host == "0.0.0.0" {
+            println!(" * Server start on: http://{}:{}", "127.0.0.1", config.port);
+            println!(
+                " * Server start on: http://{}:{}",
+                utils::get_lan_ip().unwrap().to_string(),
+                config.port
+            );
+        } else {
+            println!(" * Server start on: http://{}:{}", config.host, config.port);
+        }
+
+        HttpServer::new(move || {
+            App::new()
+                .app_data(Data::from(sessions.clone()))
+                .service(index)
+                .service(open_db)
+                .service(close_db)
+                .service(put_value)
+                .service(get_value)
+                .service(delete_value)
+                .service(get_identifier)
+                .service(set_identifier)
+                .service(get_current)
+                .service(compact_db)
+                .service(execute_command)
+        })
+        .bind((config.host.as_str(), config.port))?
+        .run()
+        .await?;
+
+        Ok(())
+    }
+
+    fn spawn_session_cleanup(sessions: SessionManager) {
+        tokio::spawn(async move {
+            let mut interval = time::interval(Duration::from_secs(60 * 5));
+            loop {
+                interval.tick().await;
+                let now = Instant::now();
+                sessions.retain(|_, session| {
+                    let last_active = block_on(session.last_active.lock());
+                    now.duration_since(*last_active) < Duration::from_secs(60 * 30)
+                });
+            }
+        });
+    }
 }
 
 
@@ -636,56 +699,4 @@ async fn parse_and_execute(command: &str, store: &mut KVStore) -> Result<String>
     }
 
     Err(anyhow!("Unknown command"))
-}
-
-
-pub async fn run_server() -> Result<()> {
-    let args = Args::parse();
-    PRINT_HEADER
-        .set(args.header)
-        .expect("Global flag init succeed.");
-
-    let config = config::load_config()?;
-
-    let sessions = init_session_manager();
-
-    if !utils::is_local_port_available(config.host.clone(), config.port.clone()) {
-        return Err(anyhow::anyhow!(
-            " * Port `{}` on Host `{}` is already in use.",
-            config.port,
-            config.host
-        ));
-    }
-
-    println!(" * Starting Wind-KVStore Server...");
-    if config.host == "0.0.0.0" {
-        println!(" * Server start on: http://{}:{}", "127.0.0.1", config.port);
-        println!(
-            " * Server start on: http://{}:{}",
-            utils::get_lan_ip().unwrap().to_string(),
-            config.port
-        );
-    } else {
-        println!(" * Server start on: http://{}:{}", config.host, config.port);
-    }
-    HttpServer::new(move || {
-        App::new()
-            .app_data(Data::new(sessions.clone()))
-            .service(index)
-            .service(open_db)
-            .service(close_db)
-            .service(put_value)
-            .service(get_value)
-            .service(delete_value)
-            .service(get_identifier)
-            .service(set_identifier)
-            .service(get_current)
-            .service(compact_db)
-            .service(execute_command)
-    })
-    .bind((config.host.as_str(), config.port))?
-    .run()
-    .await?;
-
-    Ok(())
 }

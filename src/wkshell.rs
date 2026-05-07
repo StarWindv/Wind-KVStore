@@ -1,4 +1,4 @@
-use wind_kvstore::modules::shell;
+use wind_kvstore::shell;
 
 
 fn main() -> anyhow::Result<()> {

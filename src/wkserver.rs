@@ -1,12 +1,20 @@
-use anyhow::{Result};
-use wind_kvstore::modules::utils;
-use wind_kvstore::modules::server;
+use anyhow::Result;
+use wind_kvstore::utils;
+use wind_kvstore::server::WindServer;
 
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    utils::output_title(Option::from(true));
-    if let Err(e) = server::run_server().await {
+    utils::output_title(Some(true));
+    let server = match WindServer::new() {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("{}", e);
+            eprintln!(" * Server has exited.");
+            std::process::exit(1);
+        }
+    };
+    if let Err(e) = server.run().await {
         eprintln!("{}", e);
         eprintln!(" * Server has exited.");
         std::process::exit(1);
