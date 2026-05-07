@@ -857,6 +857,15 @@ impl KVStore {
             }
         }
 
+        // 提交并关闭临时数据库
+        temp_db.commit()?;
+
+        // 删除原数据库的WAL，避免恢复时干扰压缩后的文件
+        let old_wal = self.path.with_extension("wal");
+        if old_wal.exists() {
+            std::fs::remove_file(&old_wal)?;
+        }
+
         // 关闭当前数据库
         self.flush_pages()?;
         self.update_header()?;
@@ -864,6 +873,12 @@ impl KVStore {
 
         // 替换文件
         std::fs::rename(&temp_path, &self.path)?;
+
+        // 删除临时数据库的WAL
+        let temp_wal = temp_path.with_extension("wal");
+        if temp_wal.exists() {
+            let _ = std::fs::remove_file(&temp_wal);
+        }
 
         let old_lock = self.session_lock.take();
         let path = self.path.clone();
