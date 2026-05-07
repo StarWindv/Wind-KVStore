@@ -1,5 +1,5 @@
-use crate::kvstore::KVStore;
-use crate::lexer::{
+use crate::modules::implements::kvstore::KVStore;
+use crate::modules::implements::lexer::{
     parse_put_command,
     parse_get_command,
     parse_delete_command,
@@ -14,7 +14,7 @@ use linefeed::{Interface, ReadResult};
 use std::path::Path;
 use std::process::Command;
 use std::env::consts::OS;
-
+use crate::types::shell::Shell;
 
 const HELP_MSG: &str = concat!(
                                 "\n",
@@ -57,12 +57,6 @@ fn clear_scene() {
             .status()
             .expect("Failed to execute command");
     }
-}
-
-
-pub struct Shell {
-    store: Option<KVStore>,
-    current_path: Option<String>,
 }
 
 

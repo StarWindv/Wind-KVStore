@@ -1,6 +1,6 @@
 use anyhow::Result;
 use wind_kvstore::utils;
-use wind_kvstore::server::WindServer;
+use wind_kvstore::types::wind_server::WindServer;
 
 
 #[actix_web::main]

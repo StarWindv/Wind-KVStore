@@ -1,18 +1,13 @@
 use anyhow::Result;
 use dirs::home_dir;
-use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 use toml::Value;
+use crate::modules::types::server_config::ServerConfig;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 14514;
 
-#[derive(Deserialize, Debug)]
-pub struct ServerConfig {
-    pub host: String,
-    pub port: u16,
-}
 
 impl Default for ServerConfig {
     fn default() -> Self {

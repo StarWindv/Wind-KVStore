@@ -1,19 +1,15 @@
 use crate::{
-    lexer,
+    modules::types::server_config::ServerConfig,
     utils,
-    kvstore::KVStore,
-    modules::config::ServerConfig,
 };
 use actix_web::{
-    App, HttpRequest, HttpResponse, HttpServer, Responder, get, post,
-    web::{self, Data, Json},
+    get, post, web::{self, Data, Json}, App, HttpRequest, HttpResponse, HttpServer,
+    Responder,
 };
-use anyhow::{Result, anyhow};
-use clap::Parser;
+use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use futures::executor::block_on;
 use log::error;
-use serde::{Deserialize, Serialize};
 use std::{
     sync::{
         Arc,
@@ -23,28 +19,30 @@ use std::{
         Duration, Instant
     }
 };
+use clap::Parser;
 use tokio::{
     sync::Mutex,
     time
 };
 use uuid::Uuid;
-
+use crate::modules::implements::kvstore::KVStore;
+use crate::modules::implements::lexer;
+use crate::modules::types::args::Args;
+use crate::modules::types::identifier_request::IdentifierRequest;
+use crate::modules::types::identifier_response::IdentifierResponse;
+use crate::modules::types::key_value_request::KeyValueRequest;
+use crate::modules::types::key_value_response::KeyValueResponse;
+use crate::modules::types::path_request::PathRequest;
+use crate::modules::types::session::Session;
+use crate::modules::types::status_response::StatusResponse;
+use crate::modules::types::wind_server::{SessionManager, WindServer};
 
 static PRINT_HEADER: OnceLock<bool> = OnceLock::new();
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    #[arg(long, help = "Output requests headers")]
-    header: bool,
-}
 
 
-struct Session {
-    store: Mutex<Option<KVStore>>,
-    last_active: Mutex<Instant>,
-    current_path: Mutex<Option<String>>,
-}
+
+
 
 impl Session {
     fn new() -> Self {
@@ -54,49 +52,6 @@ impl Session {
             current_path: Mutex::new(None),
         }
     }
-}
-
-
-type SessionManager = Arc<DashMap<String, Arc<Session>>>;
-
-
-#[derive(Deserialize)]
-struct KeyValueRequest {
-    key: String,
-    value: Option<String>,
-}
-
-#[derive(Deserialize, Serialize)]
-struct PathRequest {
-    path: String,
-}
-
-#[derive(Deserialize)]
-struct IdentifierRequest {
-    identifier: String,
-}
-
-#[derive(Serialize)]
-struct KeyValueResponse {
-    key: String,
-    value: Option<String>,
-}
-
-#[derive(Serialize)]
-struct IdentifierResponse {
-    identifier: String,
-}
-
-#[derive(Serialize)]
-struct StatusResponse {
-    status: String,
-}
-
-
-pub struct WindServer {
-    config: ServerConfig,
-    sessions: SessionManager,
-    print_header: bool,
 }
 
 impl WindServer {
