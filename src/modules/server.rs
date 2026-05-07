@@ -1,4 +1,5 @@
 use crate::{
+    lexer,
     utils,
     kvstore::KVStore,
     modules::config::ServerConfig,
@@ -663,7 +664,7 @@ async fn execute_command(
 async fn parse_and_execute(command: &str, store: &mut KVStore) -> Result<String> {
     let command = command.trim();
 
-    if let Ok(kvs) =  utils::parse_put_command(command) {
+    if let Ok(kvs) =  lexer::parse_put_command(command) {
         let mut success = 0;
         for (key, value) in kvs {
             store.put(key.as_bytes(), value.as_bytes())?;
@@ -672,28 +673,28 @@ async fn parse_and_execute(command: &str, store: &mut KVStore) -> Result<String>
         return Ok(format!("Inserted {} key-value pairs", success));
     }
 
-    if let Ok( utils::ParsedGetCommand::Key(key)) =  utils::parse_get_command(command) {
+    if let Ok( lexer::ParsedGetCommand::Key(key)) =  lexer::parse_get_command(command) {
         if let Some(value) = store.get(key.as_bytes())? {
             return Ok(String::from_utf8(value).unwrap_or_else(|_| "<BINARY>".to_string()));
         }
         return Ok("Key not found".to_string());
     }
 
-    if let Ok(key) =  utils::parse_delete_command(command) {
+    if let Ok(key) =  lexer::parse_delete_command(command) {
         store.delete(key.as_bytes())?;
         return Ok("Key deleted".to_string());
     }
 
-    if  utils::parse_compact(command).is_ok() {
+    if  lexer::parse_compact(command).is_ok() {
         store.compact()?;
         return Ok("Database compacted".to_string());
     }
 
-    if utils::parse_identifier_get(command).is_ok() {
+    if lexer::parse_identifier_get(command).is_ok() {
         return Ok(store.get_identifier().to_string());
     }
 
-    if let Ok(id) = utils::parse_identifier_set(command) {
+    if let Ok(id) = lexer::parse_identifier_set(command) {
         store.set_identifier(&id)?;
         return Ok(format!("Identifier set to '{}'", id));
     }

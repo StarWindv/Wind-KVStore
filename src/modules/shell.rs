@@ -1,14 +1,14 @@
 use crate::kvstore::KVStore;
-use crate::utils::{
+use crate::lexer::{
     parse_put_command,
     parse_get_command,
     parse_delete_command,
     parse_identifier_get,
     parse_identifier_set,
     parse_compact,
-    output_title,
-    ParsedGetCommand
+    ParsedGetCommand,
 };
+use crate::utils::output_title;
 use anyhow::{anyhow, Result};
 use linefeed::{Interface, ReadResult};
 use std::path::Path;
@@ -18,10 +18,10 @@ use std::env::consts::OS;
 
 const HELP_MSG: &str = concat!(
                                 "\n",
-                                "Here is KVStore's help:\n",
+                                "Here is Wind-KVStore's help:\n",
                                 "Notes: All commands (excluding dot commands) must end with a semicolon.",
                                 "\n",
-                                "SHELL COMMAND:\n",
+                                "\x1b[4mSHELL COMMAND\x1b[0m:\n",
                                 "    .help                    Show this message.\n",
                                 "    .quit                    Exit KVStore shell.\n",
                                 "    .open <path>             Open kvstore at the specified path.\n",
@@ -29,20 +29,20 @@ const HELP_MSG: &str = concat!(
                                 "    .clear                   Execute screen clear command.\n",
                                 "    .title                   Show KVStore's startup information.\n",
                                 "\n",
-                                "KV OPERATOR:\n",
+                                "\x1b[4mKV OPERATOR\x1b[0m:\n",
                                 "    PUT \"KEY\":\"VALUE\"        Insert key-value pairs into an active database.\n",
                                 "    GET WHERE KEY=\"MyKey\"    Retrieve the value associated with key \"MyKey\".\n",
                                 "    DEL WHERE KEY=\"MyKey\"    Remove the key-value pair \"MyKey\".\n",
                                 "    COMPACT                  Compress the currently activity KV database.\n",
                                 "\n",
-                                "METADATA OPERATOR:\n",
+                                "\x1b[4mMETADATA OPERATOR\x1b[0m:\n",
                                 "    IDENTIFIER:\n",
                                 "        GET                  Output the current KV database's identifier.\n",
                                 "        SET \"<new id>\"       Set a new id for the current KV database.\n",
                                 "\n",
                                 "    If you have any questions or encounter program errors,\n",
                                 "    please contact our technical support at:\n",
-                                "    \x1b[4mstarwindv.stv@gmail.com\x1b[0m"
+                                "     - \x1b[4mstarwindv.stv@gmail.com\x1b[0m"
 );
 
 
