@@ -1,5 +1,7 @@
 # Wind-KVStore
 
+You can find the version under development with new features [here](https://github.com/StarWindv/Wind-KVStore/tree/dev)
+
 [中文](https://github.com/StarWindv/Wind-KVStore/blob/main/README_CN.md)
 
 ![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
