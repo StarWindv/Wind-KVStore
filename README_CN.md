@@ -2,6 +2,8 @@
 
 [English](https://github.com/StarWindv/Wind-KVStore/blob/main/README.md)
 
+你可以在[这里](https://github.com/StarWindv/Wind-KVStore/tree/dev)找到正在开发中的具有新特性的版本.
+
 ![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust Version](https://img.shields.io/badge/rust-1.85%2B-orange)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/StarWindv/Wind-KVStore)
